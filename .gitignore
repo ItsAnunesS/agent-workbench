@@ -1,0 +1,15 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+artifacts/
+.build-cache/
+/tmp/
+/output/
+__pycache__/
+*.py[cod]
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

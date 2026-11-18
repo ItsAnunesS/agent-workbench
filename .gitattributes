@@ -1,0 +1,10 @@
+* text=auto
+*.pdf binary
+*.png binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+# Preserve upstream font licenses, including their original CRLF line endings.
+**/LICENSE* -text whitespace=cr-at-eol

@@ -1,0 +1,11 @@
+GIMP Palette
+Name: Agent Workbench
+Columns: 7
+# RGB screen palette
+255 121 31	AWB Orange
+33 24 47	AWB Purple
+112 81 168	AWB Violet
+199 184 232	AWB Lavender
+245 241 250	AWB Paper
+21 18 25	AWB Graphite
+255 255 255	AWB White

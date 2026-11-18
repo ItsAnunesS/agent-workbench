@@ -1,0 +1,11 @@
+:root {
+  --awb-orange: #FF791F;
+  --awb-purple: #21182F;
+  --awb-violet: #7051A8;
+  --awb-lavender: #C7B8E8;
+  --awb-paper: #F5F1FA;
+  --awb-graphite: #151219;
+  --awb-white: #FFFFFF;
+  --awb-font-ui: 'Open Sans', system-ui, sans-serif;
+  --awb-font-code: 'Source Code Pro', monospace;
+}
