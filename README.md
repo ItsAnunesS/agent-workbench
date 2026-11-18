@@ -1,0 +1,112 @@
+<p align="center">
+  <img src="assets/branding/readme/banner.svg" alt="Agent Workbench" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://anuness.dev/pt/projects/agent-workbench"><img src="assets/branding/readme/website.svg" alt="Project website" width="142"></a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/releases"><img src="assets/branding/readme/releases.svg" alt="Download releases" width="142"></a>
+  <a href="assets/branding/brand-kit-v1"><img src="assets/branding/readme/brand-kit.svg" alt="Brand kit" width="142"></a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/issues"><img src="assets/branding/readme/issues.svg" alt="Report an issue" width="142"></a>
+  <a href="CONTRIBUTING.md"><img src="assets/branding/readme/contribute.svg" alt="Contribute" width="142"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml"><img src="https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml/badge.svg?branch=release" alt="Build"></a>
+  <a href="README.md">English</a> · <a href="docs/README.pt-BR.md">Português (Brasil)</a>
+</p>
+
+Agent Workbench is a desktop app for keeping personal and work AI sessions separate. Each environment owns its OpenAI account, projects, conversations and instructions. Chat is for discussion; Worker runs coding tasks against one project folder.
+
+Built with **Tauri, React, TypeScript and Rust**. Linux AppImage is the current distribution target. Windows and macOS icons are configured; native packages on those systems are not validated yet.
+
+## Contents
+
+- [Features](#features)
+- [Install and use](#install-and-use)
+- [Development](#development)
+- [Branches and releases](#branches-and-releases)
+- [Security](#security)
+- [License and brand](#license-and-brand)
+- [Languages](#languages)
+
+## Features
+
+- Separate environments for personal work, clients or teams, with one OpenAI account per environment.
+- Independent Chat and Worker histories. Context crosses modes only through an explicit handoff.
+- Streaming Chat responses, model selection and cancellation using an eligible ChatGPT subscription.
+- Codex Worker with command activity, file diffs, one-time approvals and cancellation.
+- One Docker container per task. Only the selected project folder is mounted; commands have no external network access. OpenAI credentials remain in the host app.
+- Local SQLite storage, environment instructions and project memory.
+- Dark, light and system themes; integrated window controls; native desktop icons.
+
+Worker edits the project folder directly. Cancelling a task does not revert edits. The initial Worker image includes Node.js, Python, Git and build essentials; other toolchains are not installed automatically.
+
+## Install and use
+
+1. Download the latest AppImage from [Releases](https://github.com/ItsAnunesS/agent-workbench/releases). Builds from individual commits are available under [Actions](https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml).
+2. Make it executable and run it:
+
+   ```sh
+   chmod +x "Agent Workbench_<version>_amd64.AppImage"
+   "./Agent Workbench_<version>_amd64.AppImage"
+   ```
+
+3. Open **Settings**, choose an environment and connect its OpenAI account.
+4. To use Worker, start Docker, prepare the runtime in Settings, then select a project folder and a model.
+
+Subscription access depends on account eligibility and the models granted by OpenAI. A ChatGPT plan does not imply unrestricted access. The app keeps its own conversation history; it does not import the official ChatGPT or Codex history.
+
+On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Settings > Repair integration** refreshes the launcher.
+
+## Development
+
+Use Docker for a consistent Linux build environment:
+
+```sh
+git clone git@github.com:ItsAnunesS/agent-workbench.git
+cd agent-workbench
+git switch dev
+bash scripts/build-appimage.sh
+```
+
+The script builds the container, installs locked dependencies, checks types, runs tests and generates the AppImage plus `SHA256SUMS` in `artifacts/`. No API key is required to build or run unit tests.
+
+For UI work, use Node.js 22.12 or later:
+
+```sh
+npm ci
+npm run dev
+```
+
+The browser preview does not authenticate accounts or execute Workers. Native development additionally needs Rust and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and commit conventions.
+
+## Branches and releases
+
+| Branch    | Purpose                                                |
+| --------- | ------------------------------------------------------ |
+| `dev`     | Normal development and integration.                    |
+| `release` | Stable/default branch and source for published builds. |
+
+Work directly on `dev` or use a short-lived branch. Merge tested work into `release`. Small fixes may go directly to `release`; bring them back into `dev` afterwards. Pull requests are useful, not mandatory for the maintainer.
+
+Every push to `dev` or `release`, and every PR targeting them, runs the build workflow. Successful `release` builds are available as commit-specific artifacts. To publish a version, run **Actions > Publish release** on `release` and choose `current`, `patch`, `minor` or `major`. The workflow updates version files, builds and tests, pushes an immutable `vX.Y.Z` tag, and attaches the AppImage and checksum to a GitHub Release.
+
+Commits and PR titles use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Example: `fix(linux): match the window ID to its desktop launcher`. See [CHANGELOG.md](CHANGELOG.md) for version history and [CONTRIBUTING.md](CONTRIBUTING.md#publishing) for the release procedure.
+
+## Security
+
+Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Do not put tokens, credentials, private prompts or company files in issues.
+
+The Worker isolation boundary is Docker, not a Git worktree. The selected folder is writable. Review approvals and diffs, and keep credentials outside project folders. See the [security policy](SECURITY.md) for scope and reporting.
+
+## License and brand
+
+The code currently has all rights reserved; no open-source license is granted. Its terms are in [LICENSE](LICENSE). **The name, robot logo, icons, original artwork and visual identity are reserved to André Nunes** and are not covered by any permission to reuse the code. See [Brand and artwork license](assets/branding/LICENSE).
+
+The [brand kit](assets/branding/brand-kit-v1) is available for official project reference. Access to it is not permission to reuse, extract or redistribute its assets. Fonts and other third-party materials retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Project: [anuness.dev/pt/projects/agent-workbench](https://anuness.dev/pt/projects/agent-workbench).
+
+## Languages
+
+[English](README.md) · [Português (Brasil)](docs/REA

@@ -2,6 +2,10 @@
 
 Identidade baseada no símbolo de robô aprovado na direção laranja e roxo.
 
+## Direitos
+
+O nome, o robô, os logos, os ícones e as imagens originais são reservados a André Nunes. Este kit serve de referência oficial e não autoriza reutilização, extração ou redistribuição. Consulte [a licença de marca](../LICENSE). As fontes de terceiros mantêm suas licenças originais.
+
 ## Usar
 
 - Símbolo principal: `01-logos/svg/awb-symbol-orange.svg`.
@@ -27,6 +31,6 @@ Ficheiros de terceiros com as respetivas licenças originais em `04-fonts`.
 
 O símbolo foi reconstruído como geometria vetorial para limpar os recortes e as cores da proposta visual. A aplicação não depende destes scripts de exportação.
 
-O script em `06-source/build-brand-kit.py` usa Python, reportlab, Pillow, fonttools e Poppler (`pdftocairo`). Para reconstruir a partir do ZIP extraído, executar `python3 06-source/build-brand-kit.py` dentro da pasta do kit, com estas ferramentas disponíveis. No repositório, executar `python3 scripts/build-brand-kit.py`. Os ficheiros deste kit podem ser usados diretamente sem executar o script.
+O script em `06-source/build-brand-kit.py` usa Python, reportlab, Pillow, fonttools e Poppler (`pdftocairo`). Para reconstruir a partir do ZIP extraído, executar `python3 06-source/build-brand-kit.py` dentro da pasta do kit, com estas ferramentas disponíveis. No repositório, executar `python3 scripts/build-brand-kit.py`. Os ficheiros já estão prontos para uso nas distribuições oficiais do Agent Workbench, sem executar o script. Isso não autoriza o uso da marca por terceiros.
 
 A prancha e o exemplo de interface são demonstrações de identidade, não capturas de uma sessão real.

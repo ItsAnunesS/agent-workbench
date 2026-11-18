@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/ItsAnunesS/agent-workbench/security/policy
+    about: Report vulnerabilities privately.
+  - name: Project website
+    url: https://anuness.dev/pt/projects/agent-workbench
+    about: Project overview and contact.
