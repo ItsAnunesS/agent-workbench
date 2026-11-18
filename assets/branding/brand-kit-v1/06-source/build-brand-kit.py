@@ -384,7 +384,7 @@ def create_preview():
 def package():
     template = Path(__file__).with_name(f"brand-kit.README.{LANGUAGE}.md")
     (KIT / "README.md").write_text(template.read_text())
-    license_source = KIT / "LICENSE" if IN_PACKAGE else ROOT / "assets/branding/LICENSE"
+    license_source = KIT / "LICENSE" if IN_PACKAGE else ROOT / "LICENSE-BRAND.md"
     if license_source.resolve() != (KIT / "LICENSE").resolve():
         shutil.copy2(license_source, KIT / "LICENSE")
     if Path(__file__).resolve() != (KIT / "06-source/build-brand-kit.py").resolve():

@@ -106,7 +106,7 @@ O isolamento do Worker é feito pelo Docker, não por um worktree Git. A pasta s
 
 ## Licença e marca
 
-O código-fonte usa a licença [MIT](../LICENSE). Essa licença se aplica ao código, não aos materiais de marca reservados descritos abaixo. **O nome, o robô, os logos, os ícones, as imagens originais e a identidade visual são reservados a André Nunes.** A permissão de uso do código não concede direitos sobre esses materiais. Veja a [licença de marca e imagens](../assets/branding/LICENSE).
+O código-fonte usa a licença [MIT](../LICENSE). Essa licença se aplica ao código, não aos materiais de marca reservados descritos abaixo. **O nome, o robô, os logos, os ícones, as imagens originais e a identidade visual são reservados a André Nunes.** A permissão de uso do código não concede direitos sobre esses materiais. Veja a [licença de marca e imagens](../LICENSE-BRAND.md).
 
 [Baixe o kit de marca em português (ZIP)](https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-pt-BR.zip), com o guia em PDF, logos, ícones, cores e fontes. O download serve de referência oficial e não autoriza reutilização, republicação ou redistribuição dos materiais de marca. Fontes e materiais de terceiros mantêm suas próprias licenças; consulte [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 

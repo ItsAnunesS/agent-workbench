@@ -57,4 +57,4 @@ Every push also has its own build artifact. A build artifact is not a published 
 
 ## Rights
 
-Source-code contributions are submitted under the project's MIT license. Contribute only material you have the right to submit. The robot, name, logos, icons, original images and brand geometry remain reserved under [the brand license](assets/branding/LICENSE), including when embedded in source files or generation scripts. MIT does not grant rights to reuse those assets. Third-party font licenses remain unchanged.
+Source-code contributions are submitted under the project's MIT license. Contribute only material you have the right to submit. The robot, name, logos, icons, original images and brand geometry remain reserved under [the brand license](LICENSE-BRAND.md), including when embedded in source files or generation scripts. MIT does not grant rights to reuse those assets. Third-party font licenses remain unchanged.
