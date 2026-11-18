@@ -11,8 +11,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml"><img src="https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml/badge.svg?branch=release" alt="Build"></a>
-  <a href="README.md">English</a> · <a href="docs/README.pt-BR.md">Português (Brasil)</a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml?query=branch%3Arelease"><img src="https://img.shields.io/github/actions/workflow/status/ItsAnunesS/agent-workbench/build.yml?branch=release&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=build&amp;labelColor=232429" alt="Build status" height="28"></a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/blob/release/package.json"><img src="https://img.shields.io/github/package-json/v/ItsAnunesS/agent-workbench/release?style=for-the-badge&amp;label=version&amp;labelColor=232429&amp;color=ff791f" alt="App version on release" height="28"></a>
+</p>
+
+<p align="center">
+  <a href="README.md"><img src="assets/branding/readme/language-en.svg" alt="English" width="133" height="40"></a>
+  <a href="docs/README.pt-BR.md"><img src="assets/branding/readme/language-pt-br.svg" alt="Português (Brasil)" width="181" height="40"></a>
 </p>
 
 Agent Workbench is a desktop app for keeping personal and work AI sessions separate. Each environment owns its OpenAI account, projects, conversations and instructions. Chat is for discussion; Worker runs coding tasks against one project folder.
@@ -109,4 +114,7 @@ Project: [anuness.dev/pt/projects/agent-workbench](https://anuness.dev/pt/projec
 
 ## Languages
 
-[English](README.md) · [Português (Brasil)](docs/REA
+<p align="center">
+  <a href="README.md"><img src="assets/branding/readme/language-en.svg" alt="English" width="133" height="40"></a>
+  <a href="docs/README.pt-BR.md"><img src="assets/branding/readme/language-pt-br.svg" alt="Português (Brasil)" width="181" height="40"></a>
+</p>

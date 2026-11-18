@@ -10,7 +10,15 @@
   <a href="../CONTRIBUTING.md"><img src="../assets/branding/readme/contribute.svg" alt="Contribuir" width="142"></a>
 </p>
 
-<p align="center"><a href="../README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a></p>
+<p align="center">
+  <a href="https://github.com/ItsAnunesS/agent-workbench/actions/workflows/build.yml?query=branch%3Arelease"><img src="https://img.shields.io/github/actions/workflow/status/ItsAnunesS/agent-workbench/build.yml?branch=release&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=build&amp;labelColor=232429" alt="Build status" height="28"></a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/blob/release/package.json"><img src="https://img.shields.io/github/package-json/v/ItsAnunesS/agent-workbench/release?style=for-the-badge&amp;label=version&amp;labelColor=232429&amp;color=ff791f" alt="App version on release" height="28"></a>
+</p>
+
+<p align="center">
+  <a href="../README.md"><img src="../assets/branding/readme/language-en.svg" alt="English" width="133" height="40"></a>
+  <a href="README.pt-BR.md"><img src="../assets/branding/readme/language-pt-br.svg" alt="Português (Brasil)" width="181" height="40"></a>
+</p>
 
 Agent Workbench é um app desktop para separar sessões pessoais e profissionais de IA. Cada ambiente tem sua própria conta OpenAI, projetos, conversas e instruções. O Chat serve para conversar; o Worker executa tarefas de código em uma pasta de projeto.
 
@@ -106,4 +114,7 @@ Projeto: [anuness.dev/pt/projects/agent-workbench](https://anuness.dev/pt/projec
 
 ## Idiomas
 
-[English](../README.md) · [Português (Brasil)](REA
+<p align="center">
+  <a href="../README.md"><img src="../assets/branding/readme/language-en.svg" alt="English" width="133" height="40"></a>
+  <a href="README.pt-BR.md"><img src="../assets/branding/readme/language-pt-br.svg" alt="Português (Brasil)" width="181" height="40"></a>
+</p>
