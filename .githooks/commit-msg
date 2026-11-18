@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+repository="$(git rev-parse --show-toplevel)"
+if command -v node >/dev/null 2>&1; then
+  exec node "$repository/scripts/check-commit.mjs" --file "$1"
+fi
+if command -v docker >/dev/null 2>&1 && docker image inspect agent-workbench-builder >/dev/null 2>&1; then
+  exec docker run --rm --network none --read-only \
+    -e COMMIT_TITLE="$(head -n 1 "$1")" \
+    -v "$repository/scripts/check-commit.mjs:/check-commit.mjs:ro" \
+    agent-workbench-builder node /check-commit.mjs --title-env COMMIT_TITLE
+fi
+printf '%s\n' 'Install Node.js or build the Docker environment with bash scripts/build-appimage.sh to validate the commit.' >&2
+exit 1

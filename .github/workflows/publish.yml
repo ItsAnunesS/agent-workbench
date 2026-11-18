@@ -1,0 +1,79 @@
+name: Publish release
+run-name: Publish release (${{ inputs.bump }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version change (current publishes the version already in the repository)
+        type: choice
+        required: true
+        default: patch
+        options: [current, patch, minor, major]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: release
+          fetch-depth: 0
+      - name: Prepare version and notes
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          python3 scripts/test-version.py
+          python3 scripts/version.py prepare --bump "$BUMP" --notes "$RUNNER_TEMP/release-notes.md" --output "$GITHUB_OUTPUT"
+      - name: Build Docker environment
+        run: docker build --tag agent-workbench-builder .
+      - name: Check, test and build AppImage
+        run: |
+          docker run --rm --init \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp/workbench-build \
+            -e CARGO_HOME=/workspace/.build-cache/cargo \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            agent-workbench-builder
+      - name: Publish verified version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          SOURCE_SHA: ${{ steps.version.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin release --tags
+          if [ "$(git rev-parse origin/release)" != "$SOURCE_SHA" ]; then
+            echo "release changed during the build; rerun the workflow on the new head." >&2
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json CHANGELOG.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): v$VERSION"
+          fi
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            if [ "$(git rev-list -n 1 "$TAG")" != "$(git rev-parse HEAD)" ]; then
+              echo "The version tag already points to another commit. Choose a new version." >&2
+              exit 1
+            fi
+          else
+            git tag -a "$TAG" -m "Agent Workbench $VERSION"
+            git push --atomic origin HEAD:release "refs/tags/$TAG"
+          fi
+          gh release create "$TAG" "artifacts/Agent Workbench_${VERSION}_amd64.AppImage" artifacts/SHA256SUMS \
+            --verify-tag --title "Agent Workbench $VERSION" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" --latest
