@@ -108,7 +108,7 @@ The Worker isolation boundary is Docker, not a Git worktree. The selected folder
 
 Source code is licensed under [MIT](LICENSE). This license applies to code, not the reserved brand assets described below. **The name, robot logo, icons, original artwork and visual identity are reserved to André Nunes** and are not covered by any permission to reuse the code. See [Brand and artwork license](assets/branding/LICENSE).
 
-[Download the brand kit in English (ZIP)](https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-en.zip), including the PDF guide, logos, icons, colors and fonts. Download is provided for official project reference and does not authorize reuse or redistribution of the brand assets. Fonts and other third-party materials retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[Download the brand kit in English (ZIP)](https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-en.zip), including the PDF guide, logos, icons, colors and fonts. Download is provided for official project reference and does not authorize reuse, republication or redistribution of the brand assets. Fonts and other third-party materials retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Project: [anuness.dev/pt/projects/agent-workbench](https://anuness.dev/pt/projects/agent-workbench).
 

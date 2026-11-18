@@ -4,7 +4,7 @@ Identidade baseada no símbolo de robô aprovado na direção laranja e roxo.
 
 ## Direitos
 
-O nome, o robô, os logos, os ícones e as imagens originais são reservados a André Nunes. Este kit serve de referência oficial e não autoriza reutilização ou redistribuição. Consulte [a licença de marca](LICENSE). As fontes de terceiros mantêm suas licenças originais.
+O nome, o robô, os logos, os ícones e as imagens originais são reservados a André Nunes. Este kit serve de referência oficial e não autoriza reutilização, republicação ou redistribuição. Consulte [a licença de marca](LICENSE). As fontes de terceiros mantêm suas licenças originais.
 
 ## Usar
 

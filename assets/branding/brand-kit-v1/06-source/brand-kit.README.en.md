@@ -4,7 +4,7 @@ Visual identity based on the approved robot symbol in orange and purple.
 
 ## Rights
 
-The name, robot, logos, icons and original artwork are reserved to André Nunes. This kit is an official reference and does not authorize reuse or redistribution. See the [brand license](LICENSE). Third-party fonts retain their original licenses.
+The name, robot, logos, icons and original artwork are reserved to André Nunes. This kit is an official reference and does not authorize reuse, republication or redistribution. See the [brand license](LICENSE). Third-party fonts retain their original licenses.
 
 ## Usage
 
