@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- English and Portuguese brand kit downloads with localized PDF guides and interface examples.
 - English and pt-BR documentation, contribution and security policies.
 - MIT licensing for source code, with reserved rights for original branding and separate third-party notices.
 - Docker-based GitHub Actions builds, manual version publication and Conventional Commit checks.

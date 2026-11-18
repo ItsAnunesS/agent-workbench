@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://anuness.dev/pt/projects/agent-workbench"><img src="../assets/branding/readme/website.svg" alt="Site do projeto" width="142"></a>
   <a href="https://github.com/ItsAnunesS/agent-workbench/releases"><img src="../assets/branding/readme/releases.svg" alt="Baixar versões" width="142"></a>
-  <a href="../assets/branding/brand-kit-v1"><img src="../assets/branding/readme/brand-kit.svg" alt="Kit de marca" width="142"></a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-pt-BR.zip"><img src="../assets/branding/readme/brand-kit.svg" alt="Baixar kit de marca em português" width="142"></a>
   <a href="https://github.com/ItsAnunesS/agent-workbench/issues"><img src="../assets/branding/readme/issues.svg" alt="Reportar um problema" width="142"></a>
   <a href="../CONTRIBUTING.md"><img src="../assets/branding/readme/contribute.svg" alt="Contribuir" width="142"></a>
 </p>
@@ -108,7 +108,7 @@ O isolamento do Worker é feito pelo Docker, não por um worktree Git. A pasta s
 
 O código-fonte usa a licença [MIT](../LICENSE). Essa licença se aplica ao código, não aos materiais de marca reservados descritos abaixo. **O nome, o robô, os logos, os ícones, as imagens originais e a identidade visual são reservados a André Nunes.** A permissão de uso do código não concede direitos sobre esses materiais. Veja a [licença de marca e imagens](../assets/branding/LICENSE).
 
-O [kit de marca](../assets/branding/brand-kit-v1) é uma referência oficial do projeto. O acesso não autoriza reutilização, extração ou redistribuição dos arquivos. Fontes e materiais de terceiros mantêm suas próprias licenças; consulte [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+[Baixe o kit de marca em português (ZIP)](https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-pt-BR.zip), com o guia em PDF, logos, ícones, cores e fontes. O download serve de referência oficial e não autoriza reutilização ou redistribuição dos materiais de marca. Fontes e materiais de terceiros mantêm suas próprias licenças; consulte [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
 Projeto: [anuness.dev/pt/projects/agent-workbench](https://anuness.dev/pt/projects/agent-workbench).
 

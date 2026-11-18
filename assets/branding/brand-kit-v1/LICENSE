@@ -1,0 +1,31 @@
+Agent Workbench - Brand and Original Artwork Terms
+Copyright (c) 2026 André Nunes. All rights reserved.
+
+These terms cover the Agent Workbench name and visual identity, the original
+robot design, logos, icons, banners, original images, brand guides, design
+geometry and derivative brand artwork supplied with this project.
+
+Coverage includes original brand content in assets/branding, src-tauri/icons,
+public/favicon.svg, documentation images, and brand geometry embedded in source
+files or generation scripts. A code license does not grant rights to that
+brand content.
+
+Permission is limited to viewing official project materials, downloading and
+inspecting the official brand kit for reference, and displaying the assets as
+included in an unmodified official Agent Workbench distribution.
+Incidental retrieval required for that viewing or use is allowed.
+
+Without express prior written authorization from André Nunes, you may not:
+- reuse, copy, adapt, trace, remix, sublicense, sell or redistribute them;
+- use them in another product, repository, service, brand or promotional work;
+- imply endorsement, affiliation or ownership of the identity.
+
+Public access to source files or the brand kit is not a reuse license. These
+terms do not limit rights granted by applicable law or mandatory platform
+terms. A public repository cannot technically prevent file downloads.
+
+Third-party fonts, dependencies and other third-party material retain their
+own copyright and license terms. They are excluded from these reserved rights.
+
+Permission requests: hello@anuness.dev
+Official project: https://anuness.dev/pt/projects/agent-workbench

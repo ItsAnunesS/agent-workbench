@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://anuness.dev/pt/projects/agent-workbench"><img src="assets/branding/readme/website.svg" alt="Project website" width="142"></a>
   <a href="https://github.com/ItsAnunesS/agent-workbench/releases"><img src="assets/branding/readme/releases.svg" alt="Download releases" width="142"></a>
-  <a href="assets/branding/brand-kit-v1"><img src="assets/branding/readme/brand-kit.svg" alt="Brand kit" width="142"></a>
+  <a href="https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-en.zip"><img src="assets/branding/readme/brand-kit.svg" alt="Download brand kit (English)" width="142"></a>
   <a href="https://github.com/ItsAnunesS/agent-workbench/issues"><img src="assets/branding/readme/issues.svg" alt="Report an issue" width="142"></a>
   <a href="CONTRIBUTING.md"><img src="assets/branding/readme/contribute.svg" alt="Contribute" width="142"></a>
 </p>
@@ -108,7 +108,7 @@ The Worker isolation boundary is Docker, not a Git worktree. The selected folder
 
 Source code is licensed under [MIT](LICENSE). This license applies to code, not the reserved brand assets described below. **The name, robot logo, icons, original artwork and visual identity are reserved to André Nunes** and are not covered by any permission to reuse the code. See [Brand and artwork license](assets/branding/LICENSE).
 
-The [brand kit](assets/branding/brand-kit-v1) is available for official project reference. Access to it is not permission to reuse, extract or redistribute its assets. Fonts and other third-party materials retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[Download the brand kit in English (ZIP)](https://github.com/ItsAnunesS/agent-workbench/raw/refs/heads/release/assets/branding/downloads/agent-workbench-brand-kit-v1-en.zip), including the PDF guide, logos, icons, colors and fonts. Download is provided for official project reference and does not authorize reuse or redistribution of the brand assets. Fonts and other third-party materials retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Project: [anuness.dev/pt/projects/agent-workbench](https://anuness.dev/pt/projects/agent-workbench).
 

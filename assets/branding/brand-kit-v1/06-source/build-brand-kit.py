@@ -1,5 +1,6 @@
 """Build the Agent Workbench vector brand assets and visual guide."""
 
+import argparse
 import hashlib
 import json
 import math
@@ -9,8 +10,6 @@ import zipfile
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from fontTools.ttLib import TTFont as OutlineFont
-from fontTools.pens.svgPathPen import SVGPathPen
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -34,6 +33,12 @@ RIGHT_EYE = "M771 630 H888 Q895 630 895 637 V649 L828 740 Q818 755 804 755 H691 
 SYMBOL = " ".join([OUTER, VISOR, LEFT_EYE, RIGHT_EYE])
 FONT_SOURCE = Path("/usr/share/fonts/open-sans")
 FONT_FILES = ["OpenSans-Regular.ttf", "OpenSans-Semibold.ttf", "OpenSans-Bold.ttf"]
+LANGUAGE = "pt-BR"
+TRANSLATIONS = json.loads(Path(__file__).with_name("brand-kit.en.json").read_text())
+
+
+def translate(content):
+    return TRANSLATIONS.get(content, content) if LANGUAGE == "en" else content
 
 
 def setup():
@@ -63,6 +68,9 @@ def svg_document(width, height, body, viewbox=None, title="Agent Workbench"):
 
 
 def outline_wordmark(text, x, baseline, size, color):
+    from fontTools.ttLib import TTFont as OutlineFont
+    from fontTools.pens.svgPathPen import SVGPathPen
+
     font = OutlineFont(KIT / "04-fonts/open-sans/OpenSans-Semibold.ttf")
     glyphs = font.getGlyphSet()
     cmap = font.getBestCmap()
@@ -170,10 +178,12 @@ W, H = 960, 600
 
 
 def text(c, x, y, content, size=12, color="paper", font="Regular"):
+    content = translate(content)
     c.setFillColor(HexColor(COLORS.get(color, color))); c.setFont(font, size); c.drawString(x, y, content)
 
 
 def lines(c, x, y, content, size=13, color="lavender", width=450, leading=None):
+    content = translate(content)
     leading = leading or size * 1.6
     current = ""
     for word in content.split():
@@ -196,13 +206,13 @@ def page(c, number, category, background="purple"):
     dark = background != "paper"
     ink = "lavender" if dark else "purple"
     text(c, 48, H - 38, "AGENT WORKBENCH", 9, "orange" if dark else "purple", "Bold")
-    c.setFillColor(HexColor(COLORS[ink])); c.setFont("Regular", 9); c.drawRightString(W - 48, H - 38, category.upper())
+    c.setFillColor(HexColor(COLORS[ink])); c.setFont("Regular", 9); c.drawRightString(W - 48, H - 38, translate(category).upper())
     text(c, 48, 27, "IDENTIDADE VISUAL  /  V1.0  /  NOV 2026", 8, ink)
     c.drawRightString(W - 48, 27, f"{number:02d} / 08")
 
 
 def heading(c, eyebrow, title, subtitle=None, light=False):
-    text(c, 48, 495, eyebrow.upper(), 10, "orange" if not light else "violet", "Semibold")
+    text(c, 48, 495, translate(eyebrow).upper(), 10, "orange" if not light else "violet", "Semibold")
     text(c, 48, 448, title, 34, "purple" if light else "paper", "Semibold")
     if subtitle: lines(c, 48, 415, subtitle, 12, "violet" if light else "lavender", 810)
 
@@ -242,9 +252,9 @@ def application(c, x, y, width, height):
 
 def create_guide():
     c = canvas.Canvas(str(GUIDE), pagesize=(W, H))
-    c.setTitle("Agent Workbench - Guia de marca v1.0")
+    c.setTitle(translate("Agent Workbench - Guia de marca v1.0"))
     c.setAuthor("Agent Workbench")
-    c.setSubject("Identidade visual: símbolo, cores, tipografia e aplicações")
+    c.setSubject(translate("Identidade visual: símbolo, cores, tipografia e aplicações"))
 
     page(c, 1, "Brand kit")
     draw_symbol(c, 565, 130, 335, COLORS["orange"])
@@ -291,7 +301,7 @@ def create_guide():
         text(c, x, 190, COLORS[key], 13, "paper", "Bold")
         lines(c, x, 167, role, 9, width=160)
     ratio = contrast(COLORS["orange"], COLORS["purple"])
-    text(c, 48, 104, f"Laranja / roxo: {ratio:.2f}:1 de contraste. Em botões laranja, usar texto roxo.", 12, "lavender")
+    text(c, 48, 104, translate("Laranja / roxo: {ratio:.2f}:1 de contraste. Em botões laranja, usar texto roxo.").format(ratio=ratio), 12, "lavender")
     text(c, 48, 78, "Paleta RGB para ecrã. Para impressão, converter com o perfil do fornecedor e validar uma prova.", 10, "lavender")
     c.showPage()
 
@@ -362,8 +372,8 @@ def create_preview():
         text(c, x, 141, COLORS[key], 9, "lavender")
     text(c, 45, 45, "ROBOT SYMBOL  /  VECTOR LOGOS  /  APP ICONS  /  COLOR SYSTEM", 9, "lavender")
     c.showPage(); c.save()
-    rasterize(pdf, ARTIFACTS / "agent-workbench-brand-kit-preview.png", 1920)
-    shutil.copy2(ARTIFACTS / "agent-workbench-brand-kit-preview.png", KIT / "05-applications/brand-board.png")
+    rasterize(pdf, ARTIFACTS / f"agent-workbench-brand-kit-preview-{LANGUAGE}.png", 1920)
+    shutil.copy2(ARTIFACTS / f"agent-workbench-brand-kit-preview-{LANGUAGE}.png", KIT / "05-applications/brand-board.png")
     app_pdf = KIT / "05-applications/interface-example.pdf"
     c = canvas.Canvas(str(app_pdf), pagesize=(960, 600)); rect(c, 0, 0, 960, 600, "purple")
     application(c, 48, 80, 864, 430)
@@ -372,49 +382,45 @@ def create_preview():
 
 
 def package():
-    (KIT / "README.md").write_text("""# Agent Workbench - Brand kit v1.0
-
-Identidade baseada no símbolo de robô aprovado na direção laranja e roxo.
-
-## Usar
-
-- Símbolo principal: `01-logos/svg/awb-symbol-orange.svg`.
-- Assinatura em fundo escuro: `awb-lockup-light.svg`.
-- Assinatura em fundo claro: `awb-lockup-dark.svg`.
-- SVG e PDF são vetoriais. O lettering dos SVG está em contornos.
-- PNG dos logos tem transparência. Os ícones de aplicação têm um fundo próprio.
-- Os números no nome dos PNG indicam a dimensão em píxeis.
-- Respeitar a margem livre e os tamanhos mínimos do guia.
-
-## Cores
-
-Laranja principal: #FF791F. Fundo roxo: #21182F.
-Tokens prontos em CSS e JSON, com uma paleta GIMP adicional.
-Os valores são RGB para ecrã. Para impressão, usar uma conversão com prova de cor.
-
-## Fontes
-
-Open Sans Regular, Semibold e Bold; Source Code Pro Regular.
-Ficheiros de terceiros com as respetivas licenças originais em `04-fonts`.
-
-## Construção
-
-O símbolo foi reconstruído como geometria vetorial para limpar os recortes e as cores da proposta visual. A aplicação não depende destes scripts de exportação.
-
-O script em `06-source/build-brand-kit.py` usa Python, reportlab, Pillow, fonttools e Poppler (`pdftocairo`). Para reconstruir a partir do ZIP extraído, executar `python3 06-source/build-brand-kit.py` dentro da pasta do kit, com estas ferramentas disponíveis. No repositório, executar `python3 scripts/build-brand-kit.py`. Os ficheiros deste kit podem ser usados diretamente sem executar o script.
-
-A prancha e o exemplo de interface são demonstrações de identidade, não capturas de uma sessão real.
-""")
+    template = Path(__file__).with_name(f"brand-kit.README.{LANGUAGE}.md")
+    (KIT / "README.md").write_text(template.read_text())
+    license_source = KIT / "LICENSE" if IN_PACKAGE else ROOT / "assets/branding/LICENSE"
+    if license_source.resolve() != (KIT / "LICENSE").resolve():
+        shutil.copy2(license_source, KIT / "LICENSE")
     if Path(__file__).resolve() != (KIT / "06-source/build-brand-kit.py").resolve():
         shutil.copy2(Path(__file__), KIT / "06-source/build-brand-kit.py")
+    for name in ["brand-kit.en.json", "brand-kit.README.en.md", "brand-kit.README.pt-BR.md"]:
+        source = Path(__file__).with_name(name)
+        destination = KIT / "06-source" / name
+        if source.resolve() != destination.resolve():
+            shutil.copy2(source, destination)
     files = sorted(path for path in KIT.rglob("*") if path.is_file() and path.name != "SHA256SUMS")
     (KIT / "SHA256SUMS").write_text("".join(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(KIT)}\n" for path in files))
-    target = ARTIFACTS / "agent-workbench-brand-kit-v1.zip"
+    target = ARCHIVE
+    target.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(KIT.rglob("*")):
-            if path.is_file(): archive.write(path, Path("agent-workbench-brand-kit-v1") / path.relative_to(KIT))
+            if path.is_file(): archive.write(path, Path(KIT.name) / path.relative_to(KIT))
     print(json.dumps({"files": len(files) + 1, "zip": str(target), "pdf": str(GUIDE), "contrast": round(contrast(COLORS["orange"], COLORS["purple"]), 2)}, indent=2))
 
 
 if __name__ == "__main__":
-    setup(); create_logos(); create_icons(); create_tokens(); create_guide(); create_preview(); package()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--language", choices=["pt-BR", "en"], default="pt-BR")
+    parser.add_argument("--output", type=Path, help="Destination directory for the complete kit")
+    parser.add_argument("--archive", type=Path, help="Destination ZIP path")
+    parser.add_argument("--documents-only", action="store_true", help="Reuse existing logos, icons, colors and fonts")
+    args = parser.parse_args()
+    LANGUAGE = args.language
+    original_kit = KIT
+    default_kit = KIT if IN_PACKAGE or LANGUAGE == "pt-BR" else ROOT / ".build-cache/brand-kit-v1-en"
+    KIT = (args.output or default_kit).resolve()
+    ARCHIVE = (args.archive or ARTIFACTS / f"agent-workbench-brand-kit-v1-{LANGUAGE}.zip").resolve()
+    TEMP = ROOT / f"tmp/pdfs/brand-kit-{LANGUAGE}"
+    GUIDE = ROOT / f"output/pdf/agent-workbench-brand-guide-v1-{LANGUAGE}.pdf"
+    if KIT != original_kit.resolve():
+        shutil.copytree(original_kit, KIT, dirs_exist_ok=True)
+    setup()
+    if not args.documents_only:
+        create_logos(); create_icons(); create_tokens()
+    create_guide(); create_preview(); package()
