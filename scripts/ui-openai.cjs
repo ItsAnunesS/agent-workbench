@@ -38,6 +38,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     const cancellations = new Set();
     window.fixtureCalls = [];
     window.__TAURI_INTERNALS__ = {
+      metadata: { currentWindow: { label: "main" } },
       transformCallback: (callback) => {
         callbacks.set(++callbackId, callback);
         return callbackId;
@@ -50,6 +51,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           conversationId: args.conversationId,
           model: args.model,
         });
+        if (command === "plugin:window|is_maximized") return false;
+        if (command === "desktop_integration_status")
+          return { supported: false, installed: false, issue: null };
         if (command === "load_workspace") return structuredClone(workspace);
         if (command === "save_workspace") {
           workspace = structuredClone(args.workspace);

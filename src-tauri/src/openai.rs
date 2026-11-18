@@ -53,7 +53,7 @@ struct Request {
 
 pub struct OpenAi {
     path: PathBuf,
-    client: Client,
+    pub(crate) client: Client,
     credentials: Mutex<Credentials>,
     login: Mutex<Option<(String, CancellationToken)>>,
     requests: Mutex<HashMap<String, Request>>,
@@ -619,7 +619,7 @@ fn convert_tokens(response: TokenResponse, previous: Option<&Tokens>) -> Result<
     })
 }
 
-async fn access_token(state: &OpenAi, environment_id: &str) -> Result<String, String> {
+pub(crate) async fn access_token(state: &OpenAi, environment_id: &str) -> Result<String, String> {
     // Serializing refresh and persistence prevents rotating-token races in this process.
     let mut credentials = state.credentials.lock().await;
     let account = credentials
@@ -708,7 +708,7 @@ pub async fn openai_models(
         .collect())
 }
 
-fn api_error(status: u16, code: &str) -> String {
+pub(crate) fn api_error(status: u16, code: &str) -> String {
     match (status, code) {
         (_, "subscription_sharing_user_not_eligible") => "A subscrição ou o workspace não permite usar este app.",
         (_, "subscription_sharing_usage_limit_exceeded") | (429, _) => "O limite de utilização foi atingido. Consulta os limites em ChatGPT > Definições > Utilização.",
@@ -950,9 +950,11 @@ pub async fn openai_cancel_chat(
 
 #[tauri::command]
 pub async fn openai_logout(
+    app: tauri::AppHandle,
     state: State<'_, OpenAi>,
     environment_id: String,
 ) -> Result<bool, String> {
+    super::worker::cancel_environment(&app, &environment_id);
     if let Some((pending_environment, cancel)) = state.login.lock().await.as_ref() {
         if pending_environment == &environment_id {
             cancel.cancel();

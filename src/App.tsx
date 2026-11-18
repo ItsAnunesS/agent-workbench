@@ -1,3 +1,4 @@
+import { version as appVersion } from "../package.json";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import {
@@ -23,9 +24,17 @@ import {
   ShieldCheck,
   Sparkles,
   StickyNote,
+  Sun,
+  Moon,
   X,
 } from "lucide-react";
 import { useOpenAi, type ChatStreamEvent } from "./openai";
+import { DesktopIntegration } from "./components/DesktopIntegration";
+import { WindowControls } from "./components/WindowControls";
+import { useTheme } from "./theme";
+import { ThemeSwitcher } from "./components/ThemeSwitcher";
+import { useWorker } from "./worker";
+import { WorkerPanel, WorkerSetup } from "./components/WorkerPanel";
 import { BrandMark, BrandWordmark } from "./components/Brand";
 import { MessageContent } from "./components/MessageContent";
 import {
@@ -38,7 +47,13 @@ import {
   type Workspace,
 } from "./workspace";
 
-type Dialog = "environment" | "project" | "memory" | "settings" | null;
+type Dialog =
+  | "projectPath"
+  | "environment"
+  | "project"
+  | "memory"
+  | "settings"
+  | null;
 const previewWorkspace: Workspace = {
   version: 1,
   environments: [
@@ -50,6 +65,7 @@ const previewWorkspace: Workspace = {
 };
 
 export default function App() {
+  const appearance = useTheme();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [environmentId, setEnvironmentId] = useState("personal");
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -66,6 +82,10 @@ export default function App() {
   const [formText, setFormText] = useState("");
   const [formColor, setFormColor] = useState<Color>("green");
   const openai = useOpenAi(environmentId);
+  const worker = useWorker(
+    environmentId,
+    mode === "worker" ? conversationId : null,
+  );
   const workspaceRef = useRef<Workspace | null>(null);
   const savedWorkspaceRef = useRef<Workspace | null>(null);
   const [activeRequest, setActiveRequest] = useState<{
@@ -165,7 +185,12 @@ export default function App() {
   useEffect(() => {
     if (followResponseRef.current)
       endRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [workspace?.conversations, activeRequest?.text]);
+  }, [
+    workspace?.conversations,
+    activeRequest?.text,
+    worker.active?.output,
+    worker.active?.events.length,
+  ]);
 
   function commit(next: Workspace): Promise<boolean> {
     workspaceRef.current = next;
@@ -281,6 +306,50 @@ export default function App() {
     }
   }
 
+  async function executeWorker(target: Conversation) {
+    if (
+      worker.active ||
+      requestRef.current ||
+      !openai.account?.eligible ||
+      !openai.model
+    )
+      return;
+    await saveQueue.current;
+    if (workspaceRef.current !== savedWorkspaceRef.current) {
+      setError("Guarda as alterações antes de executar a tarefa.");
+      return;
+    }
+    const result = await worker.start(target, openai.model);
+    const latest = workspaceRef.current;
+    if (result?.output && latest) {
+      await commit({
+        ...latest,
+        conversations: latest.conversations.map((item) =>
+          item.id === target.id
+            ? {
+                ...item,
+                messages: [
+                  ...item.messages,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "assistant",
+                    status:
+                      result.status === "completed"
+                        ? "completed"
+                        : result.status === "interrupted"
+                          ? "interrupted"
+                          : "failed",
+                    content: result.output,
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+              }
+            : item,
+        ),
+      });
+    }
+  }
+
   async function cancelResponse() {
     if (!activeRequest) return;
     try {
@@ -295,9 +364,12 @@ export default function App() {
 
   if (!workspace)
     return (
-      <div className="loading">
+      <div className="loading" data-tauri-drag-region="deep">
+        <div className="loading-window-controls">
+          <WindowControls onError={setError} />
+        </div>
         <BrandMark className="loading-logo" />
-        <BrandWordmark />
+        <BrandWordmark theme={appearance.theme} />
         <p>{error || "A abrir o teu espaço de trabalho..."}</p>
       </div>
     );
@@ -360,7 +432,13 @@ export default function App() {
   async function saveMessage(event?: FormEvent) {
     event?.preventDefault();
     const content = draft.trim();
-    if (!content || content.length > 100_000 || requestRef.current) return;
+    if (
+      !content ||
+      content.length > 100_000 ||
+      requestRef.current ||
+      worker.active
+    )
+      return;
     const current =
       conversation || createConversation(environmentId, mode, projectId);
     const updated: Conversation = {
@@ -394,6 +472,15 @@ export default function App() {
     setDraft("");
     const saved = await saving;
     if (saved && updated.mode === "chat") await requestResponse(updated);
+    if (
+      saved &&
+      updated.mode === "worker" &&
+      worker.runtime?.ready &&
+      project?.path &&
+      openai.account?.eligible &&
+      openai.model
+    )
+      await executeWorker(updated);
   }
 
   function handoff() {
@@ -408,7 +495,7 @@ export default function App() {
 
   function openDialog(value: Dialog) {
     setFormName("");
-    setFormPath("");
+    setFormPath(value === "projectPath" ? project?.path || "" : "");
     setFormColor("green");
     setFormText(
       value === "memory"
@@ -422,7 +509,14 @@ export default function App() {
 
   function submitDialog(event: FormEvent) {
     event.preventDefault();
-    if (dialog === "environment" && formName.trim()) {
+    if (dialog === "projectPath" && project && !worker.active) {
+      commit({
+        ...workspace!,
+        projects: workspace!.projects.map((item) =>
+          item.id === project.id ? { ...item, path: formPath.trim() } : item,
+        ),
+      });
+    } else if (dialog === "environment" && formName.trim()) {
       const id = crypto.randomUUID();
       commit({
         ...workspace!,
@@ -662,7 +756,7 @@ export default function App() {
       </aside>
 
       <main className="main-area">
-        <header className="topbar">
+        <header className="topbar" data-tauri-drag-region="deep">
           <div className="breadcrumb">
             <span>{environment.name}</span>
             <ChevronRight size={14} />
@@ -671,6 +765,30 @@ export default function App() {
             <strong>{mode === "chat" ? "Chat" : "Worker"}</strong>
           </div>
           <div className="topbar-actions">
+            <button
+              className="icon-button theme-toggle"
+              aria-label={
+                appearance.theme === "dark"
+                  ? "Ativar tema claro"
+                  : "Ativar tema escuro"
+              }
+              title={
+                appearance.theme === "dark"
+                  ? "Ativar tema claro"
+                  : "Ativar tema escuro"
+              }
+              onClick={() =>
+                appearance.selectTheme(
+                  appearance.theme === "dark" ? "light" : "dark",
+                )
+              }
+            >
+              {appearance.theme === "dark" ? (
+                <Sun size={17} />
+              ) : (
+                <Moon size={17} />
+              )}
+            </button>
             <span className="local-badge">
               <span />
               Local
@@ -687,6 +805,7 @@ export default function App() {
                 <PanelRightOpen size={18} />
               )}
             </button>
+            <WindowControls onError={setError} />
           </div>
         </header>
         {error && (
@@ -878,13 +997,12 @@ export default function App() {
                       </div>
                     </article>
                   )}
-                  {(mode === "worker" || !openai.account?.connected) && (
+                  {!openai.account?.connected && (
                     <div className="pending-note">
                       <Cpu size={17} />
                       <span>
-                        {mode === "worker"
-                          ? "Tarefa guardada. A execução de workers será a próxima etapa."
-                          : "Mensagem guardada. Liga a conta deste ambiente para receber respostas."}
+                        Mensagem guardada. Liga a conta deste ambiente para
+                        receber respostas.
                       </span>
                     </div>
                   )}
@@ -900,6 +1018,73 @@ export default function App() {
                         <ArrowRight size={14} />
                       </button>
                     )}
+                  {mode === "worker" && (
+                    <>
+                      {!project && (
+                        <label className="field worker-assign">
+                          Projeto da tarefa
+                          <select
+                            aria-label="Projeto da tarefa"
+                            value=""
+                            disabled={!!worker.active}
+                            onChange={async (event) => {
+                              const id = event.target.value;
+                              if (!id) return;
+                              const latest = workspaceRef.current!;
+                              if (
+                                await commit({
+                                  ...latest,
+                                  conversations: latest.conversations.map(
+                                    (item) =>
+                                      item.id === conversation.id
+                                        ? { ...item, projectId: id }
+                                        : item,
+                                  ),
+                                })
+                              )
+                                changeScope(
+                                  environmentId,
+                                  id,
+                                  "worker",
+                                  conversation.id,
+                                );
+                            }}
+                          >
+                            <option value="">Selecionar projeto</option>
+                            {projects.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <WorkerPanel
+                        worker={worker}
+                        conversationId={conversation.id}
+                        projectPath={project?.path}
+                        onEditPath={
+                          project ? () => openDialog("projectPath") : undefined
+                        }
+                      />
+                      <button
+                        className="primary-button worker-execute"
+                        disabled={
+                          !isTauri() ||
+                          !!worker.active ||
+                          !!activeRequest ||
+                          !worker.runtime?.ready ||
+                          !project?.path ||
+                          !openai.account?.eligible ||
+                          !openai.model
+                        }
+                        onClick={() => executeWorker(conversation)}
+                      >
+                        <Cpu size={15} />
+                        Executar tarefa
+                      </button>
+                    </>
+                  )}
                   {mode === "chat" && (
                     <button
                       className="handoff-button"
@@ -962,6 +1147,45 @@ export default function App() {
                     </button>
                   </div>
                 )}
+              {mode === "worker" && !conversation?.messages.length && (
+                <WorkerPanel
+                  worker={worker}
+                  conversationId={null}
+                  projectPath={project?.path}
+                  onEditPath={
+                    project ? () => openDialog("projectPath") : undefined
+                  }
+                />
+              )}
+              {worker.active &&
+                worker.active.conversationId !== conversationId && (
+                  <div className="running-notice">
+                    <span>
+                      Há uma tarefa Codex em curso
+                      {worker.active.status === "awaitingApproval"
+                        ? " à espera da tua aprovação"
+                        : ""}
+                      .
+                    </span>
+                    <button
+                      onClick={() => {
+                        const target = workspace.conversations.find(
+                          (item) => item.id === worker.active?.conversationId,
+                        );
+                        if (target)
+                          changeScope(
+                            target.environmentId,
+                            target.projectId,
+                            "worker",
+                            target.id,
+                          );
+                      }}
+                    >
+                      Ver tarefa
+                      <ArrowRight size={13} />
+                    </button>
+                  </div>
+                )}
               <div
                 className={`connection-notice ${openai.account?.eligible ? "connected" : ""}`}
               >
@@ -974,7 +1198,9 @@ export default function App() {
                 <span className="notice-divider">·</span>
                 <span>
                   {mode === "worker"
-                    ? "Worker local em preparação"
+                    ? worker.runtime?.ready
+                      ? "Codex isolado por projeto"
+                      : "Prepara o Worker nas definições"
                     : openai.account?.eligible
                       ? "Chat com a tua subscrição"
                       : "Liga a tua subscrição ChatGPT"}
@@ -1026,11 +1252,15 @@ export default function App() {
                     <span>Contexto</span>
                   </button>
                   <div className="composer-controls">
-                    {mode === "chat" && openai.account?.eligible ? (
+                    {openai.account?.eligible ? (
                       <select
                         className="model-picker"
                         aria-label="Modelo"
-                        disabled={openai.loadingModels || !!activeRequest}
+                        disabled={
+                          openai.loadingModels ||
+                          !!activeRequest ||
+                          !!worker.active
+                        }
                         value={openai.model}
                         onChange={(event) =>
                           openai.selectModel(event.target.value)
@@ -1054,12 +1284,18 @@ export default function App() {
                         onClick={() => openDialog("settings")}
                       >
                         <Bot size={14} />
-                        {mode === "chat"
-                          ? "Ligar OpenAI"
-                          : "Worker em preparação"}
+                        {mode === "chat" ? "Ligar OpenAI" : "Configurar Worker"}
                       </button>
                     )}
-                    {activeRequest ? (
+                    {worker.active ? (
+                      <button
+                        type="button"
+                        className="stop-button"
+                        onClick={worker.cancel}
+                      >
+                        Parar tarefa
+                      </button>
+                    ) : activeRequest ? (
                       <button
                         type="button"
                         className="stop-button"
@@ -1164,7 +1400,9 @@ export default function App() {
                     {project.path || "Sem pasta associada"}
                   </p>
                   <span className="subtle">
-                    Acesso aos ficheiros ainda desativado.
+                    {mode === "worker"
+                      ? "Apenas esta pasta fica disponível durante a execução."
+                      : "O Chat não tem acesso aos ficheiros locais."}
                   </span>
                 </div>
               )}
@@ -1243,7 +1481,10 @@ export default function App() {
               <X size={19} />
             </button>
             {dialog === "settings" ? (
-              <BrandWordmark className="settings-wordmark" />
+              <BrandWordmark
+                className="settings-wordmark"
+                theme={appearance.theme}
+              />
             ) : (
               <div className="modal-symbol">
                 {dialog === "environment" ? (
@@ -1262,11 +1503,13 @@ export default function App() {
                 ? "Um novo ambiente"
                 : dialog === "project"
                   ? "Adicionar projeto"
-                  : dialog === "memory"
-                    ? project
-                      ? "Memória do projeto"
-                      : "Instruções do ambiente"
-                    : "A tua conta, neste ambiente"}
+                  : dialog === "projectPath"
+                    ? "Pasta do projeto"
+                    : dialog === "memory"
+                      ? project
+                        ? "Memória do projeto"
+                        : "Instruções do ambiente"
+                      : "A tua conta, neste ambiente"}
             </h2>
             {dialog === "settings" ? (
               <>
@@ -1276,6 +1519,10 @@ export default function App() {
                   </span>{" "}
                   Os outros ambientes mantêm as suas próprias contas.
                 </p>
+                <ThemeSwitcher
+                  value={appearance.preference}
+                  onChange={appearance.selectTheme}
+                />
                 <div
                   className={`settings-account-card ${openai.account?.eligible ? "connected" : ""}`}
                 >
@@ -1355,6 +1602,13 @@ export default function App() {
                     escolhe outro ambiente.
                   </p>
                 </div>
+                <DesktopIntegration />
+                <WorkerSetup worker={worker} />
+                {worker.issue && (
+                  <p className="account-issue" role="alert">
+                    {worker.issue}
+                  </p>
+                )}
                 <details className="settings-details">
                   <summary>Privacidade e sobre esta versão</summary>
                   <p>
@@ -1364,8 +1618,10 @@ export default function App() {
                     espaço.
                   </p>
                   <p>
-                    Agent Workbench 0.3.0 · O Chat está disponível. A execução
-                    de Workers será adicionada numa próxima etapa.
+                    Agent Workbench {appVersion} · Chat e Codex Worker com histórico
+                    local. O Worker altera diretamente os ficheiros da pasta
+                    selecionada. Parar uma tarefa não desfaz alterações já
+                    realizadas.
                   </p>
                 </details>
                 <button
@@ -1380,9 +1636,11 @@ export default function App() {
                 <p className="modal-description">
                   {dialog === "environment"
                     ? "Mantém projetos, conversas e instruções num espaço próprio."
-                    : dialog === "project"
-                      ? `Este projeto ficará no ambiente ${environment.name}.`
-                      : "Guarda apenas informação adequada a este espaço. Não incluas credenciais ou segredos."}
+                    : dialog === "projectPath"
+                      ? "Esta será a única pasta do computador disponível para as tarefas deste projeto."
+                      : dialog === "project"
+                        ? `Este projeto ficará no ambiente ${environment.name}.`
+                        : "Guarda apenas informação adequada a este espaço. Não incluas credenciais ou segredos."}
                 </p>
                 {(dialog === "environment" || dialog === "project") && (
                   <label className="field">
@@ -1422,9 +1680,10 @@ export default function App() {
                     </div>
                   </div>
                 )}
-                {dialog === "project" && (
+                {(dialog === "project" || dialog === "projectPath") && (
                   <label className="field">
-                    Pasta do projeto <span>(opcional)</span>
+                    Pasta do projeto{" "}
+                    <span>(necessária para executar o Worker)</span>
                     <input
                       maxLength={4096}
                       value={formPath}
@@ -1432,8 +1691,9 @@ export default function App() {
                       onChange={(event) => setFormPath(event.target.value)}
                     />
                     <small>
-                      Por enquanto, apenas uma referência. Nenhum acesso é
-                      concedido.
+                      Ao executar uma tarefa, o Codex poderá ler e alterar os
+                      ficheiros desta pasta. Escolhe apenas o projeto que queres
+                      disponibilizar.
                     </small>
                   </label>
                 )}
@@ -1449,8 +1709,8 @@ export default function App() {
                       placeholder="Preferências, decisões e contexto importante..."
                     />
                     <small>
-                      Este contexto será enviado nos pedidos de Chat deste
-                      ambiente ou projeto.
+                      Este contexto será enviado nos pedidos de Chat e Worker
+                      deste ambiente ou projeto.
                     </small>
                   </label>
                 )}
@@ -1463,7 +1723,11 @@ export default function App() {
                     Cancelar
                   </button>
                   <button className="primary-button" type="submit">
-                    {dialog === "memory" ? "Guardar contexto" : "Criar"}
+                    {dialog === "memory"
+                      ? "Guardar contexto"
+                      : dialog === "projectPath"
+                        ? "Guardar pasta"
+                        : "Criar"}
                     <ArrowRight size={15} />
                   </button>
                 </div>

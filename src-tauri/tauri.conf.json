@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Agent Workbench",
-  "version": "0.3.0",
+  "version": "0.7.0",
   "identifier": "com.anuness.agentworkbench",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -17,12 +17,14 @@
         "height": 920,
         "minWidth": 960,
         "minHeight": 640,
-        "backgroundColor": "#21182F"
+        "backgroundColor": "#1b1c20",
+        "decorations": false
       }
     ],
     "security": {
       "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
-    }
+    },
+    "enableGTKAppId": true
   },
   "bundle": {
     "active": true,
@@ -33,8 +35,12 @@
     "shortDescription": "Ambientes separados para conversar e programar com IA",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png"
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
     ],
     "linux": {
       "appimage": {

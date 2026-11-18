@@ -1,6 +1,6 @@
 [package]
 name = "agent-workbench"
-version = "0.3.0"
+version = "0.7.0"
 description = "A local workspace for AI conversations and coding agents"
 edition = "2021"
 
@@ -13,7 +13,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
-tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros"] }
+tokio = { version = "1", features = ["net", "io-util", "time", "sync", "macros", "process"] }
 tokio-util = "0.7"
 futures-util = "0.3"
 jsonwebtoken = "9"

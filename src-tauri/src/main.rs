@@ -1,7 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth_page;
+mod desktop;
 mod openai;
+mod worker;
 
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -215,7 +217,10 @@ fn save_workspace(workspace: Workspace, database: State<'_, Database>) -> Result
 }
 
 fn main() {
+    desktop::prepare_application_identity();
+    let desktop_integration = desktop::initialize();
     tauri::Builder::default()
+        .manage(desktop_integration)
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -223,6 +228,10 @@ fn main() {
             }
         }))
         .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_icon(tauri::include_image!("icons/128x128@2x.png"))?;
+            }
             let directory = app.path().app_data_dir()?;
             std::fs::create_dir_all(&directory)?;
             #[cfg(unix)]
@@ -232,6 +241,7 @@ fn main() {
             }
             let connection = Connection::open(directory.join("workbench.sqlite3"))?;
             initialize_database(&connection)?;
+            app.manage(worker::initialize(&directory, &connection)?);
             app.manage(openai::initialize(&directory)?);
             app.manage(Database(Mutex::new(connection)));
             Ok(())
@@ -239,16 +249,29 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             load_workspace,
             save_workspace,
+            desktop::desktop_integration_status,
+            desktop::desktop_integration_repair,
             openai::openai_accounts,
             openai::openai_login,
             openai::openai_cancel_login,
             openai::openai_models,
             openai::openai_chat,
             openai::openai_cancel_chat,
-            openai::openai_logout
+            openai::openai_logout,
+            worker::worker_runtime,
+            worker::worker_prepare,
+            worker::worker_history,
+            worker::worker_run,
+            worker::worker_cancel,
+            worker::worker_approve
         ])
-        .run(tauri::generate_context!())
-        .expect("Não foi possível iniciar o Agent Workbench");
+        .build(tauri::generate_context!())
+        .expect("Não foi possível iniciar o Agent Workbench")
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                worker::shutdown(app);
+            }
+        });
 }
 
 #[cfg(test)]

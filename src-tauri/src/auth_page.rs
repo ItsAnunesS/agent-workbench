@@ -85,6 +85,17 @@ mod tests {
             "script-src 'sha256-{}'",
             STANDARD.encode(Sha256::digest(SCRIPT.as_bytes()))
         )));
+        let inline_script = body
+            .split_once("<script>")
+            .unwrap()
+            .1
+            .split_once("</script>")
+            .unwrap()
+            .0;
+        assert!(headers.contains(&format!(
+            "script-src 'sha256-{}'",
+            STANDARD.encode(Sha256::digest(inline_script.as_bytes()))
+        )));
         assert!(headers.contains(&format!("Content-Length: {}", body.len())));
         assert!(body.contains("history.replaceState(null, '', location.pathname)"));
         assert!(headers.contains("Referrer-Policy: no-referrer"));
