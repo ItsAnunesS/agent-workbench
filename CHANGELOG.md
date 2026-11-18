@@ -4,10 +4,6 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
-### Fixed
-
-- Correct favicon size declarations and refresh cached browser icons while preserving the official robot artwork.
-
 ### Added
 
 - Root-level `LICENSE-BRAND.md` for original images and visual identity terms.
