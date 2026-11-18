@@ -7,7 +7,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 ### Added
 
 - English and pt-BR documentation, contribution and security policies.
-- Reserved rights for original branding and third-party license notices.
+- MIT licensing for source code, with reserved rights for original branding and separate third-party notices.
 - Docker-based GitHub Actions builds, manual version publication and Conventional Commit checks.
 - A small `dev` / `release` workflow with direct fixes supported.
 

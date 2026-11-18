@@ -101,7 +101,7 @@ The Worker isolation boundary is Docker, not a Git worktree. The selected folder
 
 ## License and brand
 
-The code currently has all rights reserved; no open-source license is granted. Its terms are in [LICENSE](LICENSE). **The name, robot logo, icons, original artwork and visual identity are reserved to André Nunes** and are not covered by any permission to reuse the code. See [Brand and artwork license](assets/branding/LICENSE).
+Source code is licensed under [MIT](LICENSE). This license applies to code, not the reserved brand assets described below. **The name, robot logo, icons, original artwork and visual identity are reserved to André Nunes** and are not covered by any permission to reuse the code. See [Brand and artwork license](assets/branding/LICENSE).
 
 The [brand kit](assets/branding/brand-kit-v1) is available for official project reference. Access to it is not permission to reuse, extract or redistribute its assets. Fonts and other third-party materials retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

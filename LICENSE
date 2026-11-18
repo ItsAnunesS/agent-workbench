@@ -1,18 +1,21 @@
-Agent Workbench
-Copyright (c) 2026 André Nunes. All rights reserved.
+MIT License
 
-No open-source or general reuse license is granted for this source code.
-Except for rights required by applicable law or the hosting platform's terms,
-copying, modification, redistribution, sublicensing, sale or use in another
-product requires prior written permission from André Nunes.
+Copyright (c) 2026 André Nunes
 
-The project's contribution guidelines explain how to propose changes. They do
-not grant a general license to reuse the project in an independent product.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-The name, robot logo, icons, original images and visual identity are subject to
-the separate reserved-brand terms in assets/branding/LICENSE. Third-party fonts
-and dependencies retain their original licenses, as described in
-THIRD_PARTY_NOTICES.md.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-Permission requests: hello@anuness.dev
-Project: https://anuness.dev/pt/projects/agent-workbench
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

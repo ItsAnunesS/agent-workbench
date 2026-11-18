@@ -98,7 +98,7 @@ O isolamento do Worker é feito pelo Docker, não por um worktree Git. A pasta s
 
 ## Licença e marca
 
-O código está com direitos reservados, sem concessão de licença open source. Os termos estão em [LICENSE](../LICENSE). **O nome, o robô, os logos, os ícones, as imagens originais e a identidade visual são reservados a André Nunes.** A permissão de uso do código não concede direitos sobre esses materiais. Veja a [licença de marca e imagens](../assets/branding/LICENSE).
+O código-fonte usa a licença [MIT](../LICENSE). Essa licença se aplica ao código, não aos materiais de marca reservados descritos abaixo. **O nome, o robô, os logos, os ícones, as imagens originais e a identidade visual são reservados a André Nunes.** A permissão de uso do código não concede direitos sobre esses materiais. Veja a [licença de marca e imagens](../assets/branding/LICENSE).
 
 O [kit de marca](../assets/branding/brand-kit-v1) é uma referência oficial do projeto. O acesso não autoriza reutilização, extração ou redistribuição dos arquivos. Fontes e materiais de terceiros mantêm suas próprias licenças; consulte [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
