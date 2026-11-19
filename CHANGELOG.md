@@ -8,9 +8,15 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 - Built-in Linux x86_64 AppImage updates from stable GitHub Releases: optional startup/six-hour checks, an update notification and manual download/install with progress in global settings. Validate the GitHub SHA-256 digest, size and AppImage header before atomic replacement at the existing path; preserve running work until the user closes and reopens the app. No new dependencies or release secrets.
 
+## [0.10.0] - 2026-11-19
+
 ### Changed
 
 - Subtle eye blinking across robot marks in Chat, Worker, project welcome screens and message avatars, including the interactive 3D rail logo. Preserve the original artwork and pointer tracking, respect reduced motion and pause 3D blinking in hidden windows.
+
+### Features
+
+* **branding:** add robot eye blinking ([970aa2b](https://github.com/ItsAnunesS/agent-workbench/commit/970aa2bc26078f2f8f57188a218cf9404237ef97))
 
 ## [0.9.2] - 2026-11-19
 
