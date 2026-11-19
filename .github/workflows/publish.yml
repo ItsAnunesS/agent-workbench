@@ -47,14 +47,15 @@ jobs:
         id: version
         env:
           BUMP: ${{ github.event_name == 'push' && 'auto' || inputs.bump }}
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           if [ "$BUMP" = auto ]; then
             docker run --rm --init \
               --user "$(id -u):$(id -g)" \
-              -e HOME=/tmp/workbench-release -e GH_TOKEN \
+              -e HOME=/tmp/workbench-release -e GITHUB_TOKEN -e GITHUB_ACTION \
+              -e GITHUB_ACTIONS -e GITHUB_REF -e GITHUB_REF_NAME -e GITHUB_EVENT_NAME \
               -v "$GITHUB_WORKSPACE:/workspace" -v "$RUNNER_TEMP:/release-output" \
               agent-workbench-builder node scripts/plan-release.mjs --plan /release-output/release-plan.json
             python3 scripts/version.py prepare --plan "$RUNNER_TEMP/release-plan.json" \
