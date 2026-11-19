@@ -4,6 +4,10 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+### Changed
+
+- Replace manual project folder path inputs with a native directory selector, read-only selected paths, cancellation-safe selection and explicit folder detachment. Preserve selected paths exactly, including spaces.
+
 ## [0.11.0] - 2026-11-19
 
 ### Added

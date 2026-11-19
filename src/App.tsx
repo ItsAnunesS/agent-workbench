@@ -2,6 +2,7 @@ import { GlobalInstructionsSettings } from "./components/GlobalInstructionsSetti
 import { InteractiveBrandMark } from "./components/InteractiveBrandMark";
 import { ToolPanel } from "./components/ToolPanel";
 import { ProjectInstructionsSettings } from "./components/ProjectInstructionsSettings";
+import { FolderPicker } from "./components/FolderPicker";
 import { TerminalSettings } from "./components/TerminalSettings";
 import { UsageButton, UsagePanel } from "./components/UsagePanel";
 import { useUsage } from "./usage";
@@ -123,6 +124,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [formName, setFormName] = useState("");
   const [formPath, setFormPath] = useState("");
+  const [pickingFolder, setPickingFolder] = useState(false);
   const [formText, setFormText] = useState("");
   const [formColor, setFormColor] = useState<Color>("green");
   const openai = useOpenAi(environmentId);
@@ -579,11 +581,12 @@ export default function App() {
 
   function submitDialog(event: FormEvent) {
     event.preventDefault();
+    if (pickingFolder) return;
     if (dialog === "projectPath" && project && !worker.active) {
       commit({
         ...workspace!,
         projects: workspace!.projects.map((item) =>
-          item.id === project.id ? { ...item, path: formPath.trim() } : item,
+          item.id === project.id ? { ...item, path: formPath } : item,
         ),
       });
     } else if (dialog === "environment" && formName.trim()) {
@@ -606,7 +609,7 @@ export default function App() {
             id,
             environmentId,
             name: formName.trim(),
-            path: formPath.trim(),
+            path: formPath,
             memory: "",
           },
         ],
@@ -2122,21 +2125,21 @@ export default function App() {
                   </div>
                 )}
                 {(dialog === "project" || dialog === "projectPath") && (
-                  <label className="field">
-                    {t("Project folder")}
+                  <div className="field">
+                    <span>{t("Project folder")}</span>
                     <span>{t("(required to run Worker)")}</span>
-                    <input
-                      maxLength={4096}
+                    <FolderPicker
+                      key={JSON.stringify([dialog, environmentId, project?.id])}
                       value={formPath}
-                      placeholder={t("/home/user/Projects/my-project")}
-                      onChange={(event) => setFormPath(event.target.value)}
+                      onChange={setFormPath}
+                      onPendingChange={setPickingFolder}
                     />
                     <small>
                       {t(
                         "When running a task, Codex can read and modify files in this folder. Select only the project you want to make available.",
                       )}
                     </small>
-                  </label>
+                  </div>
                 )}
                 {(dialog === "memory" ||
                   dialog === "environmentInstructions") && (
@@ -2169,7 +2172,11 @@ export default function App() {
                   >
                     {t("Cancel")}
                   </button>
-                  <button className="primary-button" type="submit">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={pickingFolder}
+                  >
                     {dialog === "memory" || dialog === "environmentInstructions"
                       ? t("Save context")
                       : dialog === "projectPath"

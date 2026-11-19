@@ -3,6 +3,7 @@
 mod auth_page;
 mod browser;
 mod desktop;
+mod folder_picker;
 mod i18n;
 mod openai;
 mod project_instructions;
@@ -314,6 +315,7 @@ fn app_commands(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
                 settings::load_app_settings,
                 settings::save_app_settings,
                 save_workspace,
+                folder_picker::select_project_folder,
                 desktop::desktop_integration_status,
                 desktop::desktop_integration_repair,
                 updates::app_update_check,
