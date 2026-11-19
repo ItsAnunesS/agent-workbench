@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Changed
 
+- Reject dependency, configuration or source edits hidden inside a snapshot version patch before synchronizing it with newer commits.
 - Publish verified release snapshots even when newer commits arrive during the build, synchronizing version metadata without losing newer code, dependencies or unreleased notes, and retrying push races without rewriting history.
 - Avoid duplicate release-branch AppImage builds, npm installs, type checks and release-tooling tests. Reuse release-profile Rust compilation and add Docker/npm/Cargo CI caches plus stage timings while retaining all test suites.
 

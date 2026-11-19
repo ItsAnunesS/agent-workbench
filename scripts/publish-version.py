@@ -59,6 +59,20 @@ def publish(root, source, tag, before_push=None):
     changed = set(git(root, "diff", "--name-only", source, release).stdout.splitlines())
     if changed - set(version.VERSION_FILES):
         raise ValueError("The release commit may only change version metadata and release notes")
+    if changed:
+        with tempfile.TemporaryDirectory(prefix="workbench-version-patch-") as directory:
+            snapshot = Path(directory)
+            for name in version.VERSION_FILES:
+                target = snapshot / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(git(root, "show", f"{source}:{name}").stdout)
+            previous = version.current_version(snapshot)
+            if tuple(map(int, number.split("."))) <= tuple(map(int, previous.split("."))):
+                raise ValueError("The verified version must be newer than the source version")
+            version.write_version(number, snapshot)
+            for name in version.VERSION_FILES:
+                if name != "CHANGELOG.md" and (snapshot / name).read_text() != git(root, "show", f"{release}:{name}").stdout:
+                    raise ValueError("The release commit may only change version metadata and release notes")
     for attempt in range(20):
         git(root, "fetch", "origin", "refs/heads/release:refs/remotes/origin/release", "--tags")
         remote = git(root, "rev-parse", "origin/release").stdout.strip()

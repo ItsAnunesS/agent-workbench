@@ -118,6 +118,17 @@ class PublicationTests(unittest.TestCase):
             publication.publish(self.work, self.source, self.tag)
         self.assertEqual(self.git(self.work, "ls-remote", "origin", "refs/heads/release").split()[0], self.source)
 
+    def test_refuses_non_version_changes_inside_dependency_manifests(self):
+        self.git(self.work, "tag", "-d", self.tag)
+        package = json.loads((self.work / "package.json").read_text())
+        package["dependencies"]["unverified-dependency"] = "1.0.0"
+        (self.work / "package.json").write_text(json.dumps(package, indent=2) + "\n")
+        self.commit(self.work, "fix: unverified dependency change")
+        self.git(self.work, "tag", self.tag)
+        with self.assertRaisesRegex(ValueError, "only change version metadata"):
+            publication.publish(self.work, self.source, self.tag)
+        self.assertEqual(self.git(self.work, "ls-remote", "origin", "refs/heads/release").split()[0], self.source)
+
     def test_changelog_keeps_edited_entries_and_removes_empty_released_headings(self):
         source = "# Changelog\n\n## [Unreleased]\n\n### Added\n\n- Old.\n\n### Fixed\n\n- Existing.\n\n## [1.0.0]\n\nHistory.\n"
         current = source.replace("- Existing.", "- Edited existing.")
