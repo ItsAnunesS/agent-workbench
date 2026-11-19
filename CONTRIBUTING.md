@@ -49,7 +49,8 @@ Do not add credentials, local databases, build caches, generated bundles or priv
 2. Open **Actions > Publish release > Run workflow**, selecting branch `release`.
 3. Choose `current` to publish the version already in the repository, or `patch`, `minor` or `major` to create a new version. Initial publication uses `current`.
 4. The workflow updates `package.json`, the npm lockfile, Cargo package/lock versions, Tauri configuration and the changelog. It builds and tests before pushing the version commit and tag.
-5. Download the AppImage from GitHub Releases. Merge `release` back into `dev` after a version commit.
+5. The release includes the AppImage, its `.zsync` index and `SHA256SUMS`. Keep both update assets together with their generated names; managers use the embedded `gh-releases-zsync` source to find the latest stable version. The build rejects missing update metadata or an index that does not match the AppImage.
+6. Download the AppImage from GitHub Releases. Merge `release` back into `dev` after a version commit.
 
 Tags use `vX.Y.Z` and are not moved. If `release` changes while the workflow is building, publication stops rather than attaching a build to the wrong commit. If a tag was pushed but the GitHub Release failed, rerun with `current` at that same tagged commit.
 

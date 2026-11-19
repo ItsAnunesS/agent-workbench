@@ -52,8 +52,8 @@ O Worker altera a pasta do projeto diretamente. Cancelar uma tarefa não desfaz 
 2. Dê permissão de execução e abra o arquivo:
 
    ```sh
-   chmod +x "Agent Workbench_<versão>_amd64.AppImage"
-   "./Agent Workbench_<versão>_amd64.AppImage"
+   chmod +x "Agent-Workbench_<versão>_amd64.AppImage"
+   "./Agent-Workbench_<versão>_amd64.AppImage"
    ```
 
 3. Nas definições do app, escolha um ambiente e conecte sua conta OpenAI.
@@ -62,6 +62,8 @@ O Worker altera a pasta do projeto diretamente. Cancelar uma tarefa não desfaz 
 O acesso pela assinatura depende da elegibilidade da conta e dos modelos liberados pela OpenAI. O plano ChatGPT não garante acesso ilimitado. O histórico pertence ao app; conversas oficiais do ChatGPT e do Codex não são importadas.
 
 No Linux, o AppImage registra o atalho e o logo no menu de aplicativos do usuário. Se mover o arquivo, abra-o uma vez no novo local. A opção **Reparar integração**, nas definições, atualiza o atalho.
+
+Os novos AppImages incluem a fonte padrão de atualização para a versão estável mais recente no GitHub Releases. Importe o AppImage no Gear Lever ou em outro gerenciador compatível para detectar e instalar atualizações sem configurar a URL do repositório. A verificação e a instalação automática dependem das configurações do gerenciador. AppImages antigos sem esses metadados precisam ser substituídos manualmente uma vez. O AppImageUpdate também pode usar o arquivo `.zsync` publicado junto de cada versão; para executar o app, baixe o `.AppImage`.
 
 ## Desenvolvimento
 
@@ -74,7 +76,7 @@ git switch dev
 bash scripts/build-appimage.sh
 ```
 
-O script monta o ambiente, instala as dependências dos lockfiles, verifica os tipos, executa os testes e gera o AppImage e `SHA256SUMS` em `artifacts/`. O build e os testes unitários não exigem chave de API.
+O script monta o ambiente, instala as dependências dos lockfiles, verifica os tipos, executa os testes e gera o AppImage, seu índice de atualização `.zsync` e `SHA256SUMS` em `artifacts/`. O empacotamento verifica a fonte de atualização embutida e confirma que o índice corresponde ao AppImage. O build e os testes unitários não exigem chave de API.
 
 Para trabalhar na interface, use Node.js 22.12 ou superior:
 
@@ -94,7 +96,7 @@ A prévia no navegador não autentica contas nem executa Workers. O desenvolvime
 
 Trabalhe direto em `dev` ou use uma branch curta. Leve o trabalho testado para `release`. Correções pequenas podem entrar direto em `release`; depois, sincronize `dev`. PRs são úteis, mas não obrigatórias para o mantenedor.
 
-Cada push para `dev` ou `release`, e cada PR direcionada a elas, executa o build. Builds bem-sucedidos de `release` ficam disponíveis como artefatos por commit. Para publicar uma versão, execute **Actions > Publish release**, em `release`, e escolha `current`, `patch`, `minor` ou `major`. O workflow atualiza as versões, compila, testa, cria a tag imutável `vX.Y.Z` e publica o AppImage e seu checksum em uma GitHub Release.
+Cada push para `dev` ou `release`, e cada PR direcionada a elas, executa o build. Builds bem-sucedidos de `release` ficam disponíveis como artefatos por commit. Para publicar uma versão, execute **Actions > Publish release**, em `release`, e escolha `current`, `patch`, `minor` ou `major`. O workflow atualiza as versões, compila, testa, cria a tag imutável `vX.Y.Z` e publica o AppImage, o índice `.zsync` e seu checksum em uma GitHub Release.
 
 Commits e títulos de PR seguem [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Exemplo: `fix(linux): match the window ID to its desktop launcher`. Consulte o [CHANGELOG.md](../CHANGELOG.md) e o [procedimento de publicação](../CONTRIBUTING.md#publishing).
 

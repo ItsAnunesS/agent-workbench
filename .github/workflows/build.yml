@@ -55,6 +55,7 @@ jobs:
           name: agent-workbench-linux-${{ github.sha }}
           path: |
             artifacts/*.AppImage
+            artifacts/*.AppImage.zsync
             artifacts/SHA256SUMS
           if-no-files-found: error
           retention-days: 14

@@ -74,6 +74,7 @@ jobs:
             git tag -a "$TAG" -m "Agent Workbench $VERSION"
             git push --atomic origin HEAD:release "refs/tags/$TAG"
           fi
-          gh release create "$TAG" "artifacts/Agent Workbench_${VERSION}_amd64.AppImage" artifacts/SHA256SUMS \
+          gh release create "$TAG" "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage" \
+            "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage.zsync" artifacts/SHA256SUMS \
             --verify-tag --title "Agent Workbench $VERSION" \
             --notes-file "$RUNNER_TEMP/release-notes.md" --latest

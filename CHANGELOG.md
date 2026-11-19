@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Standard AppImage update metadata for Gear Lever and AppImageUpdate, with verified `.zsync` indexes included in CI artifacts and GitHub Releases.
 - Root-level `LICENSE-BRAND.md` for original images and visual identity terms.
 - Explicit restrictions on republication of original images and brand assets, including both downloadable brand kits.
 - English and Portuguese brand kit downloads with localized PDF guides and interface examples.

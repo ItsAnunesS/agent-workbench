@@ -52,8 +52,8 @@ Worker edits the project folder directly. Cancelling a task does not revert edit
 2. Make it executable and run it:
 
    ```sh
-   chmod +x "Agent Workbench_<version>_amd64.AppImage"
-   "./Agent Workbench_<version>_amd64.AppImage"
+   chmod +x "Agent-Workbench_<version>_amd64.AppImage"
+   "./Agent-Workbench_<version>_amd64.AppImage"
    ```
 
 3. Open **Settings**, choose an environment and connect its OpenAI account.
@@ -62,6 +62,8 @@ Worker edits the project folder directly. Cancelling a task does not revert edit
 Subscription access depends on account eligibility and the models granted by OpenAI. A ChatGPT plan does not imply unrestricted access. The app keeps its own conversation history; it does not import the official ChatGPT or Codex history.
 
 On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Settings > Repair integration** refreshes the launcher.
+
+New AppImages include the standard update source for the latest stable GitHub Release. Import the AppImage into Gear Lever or another compatible manager to detect and install updates without entering a repository URL. Update checks and automatic installation depend on the manager's settings. Older AppImages without this metadata need a one-time manual replacement. AppImageUpdate is also supported through the `.zsync` file published alongside each release; download the `.AppImage` to run the app.
 
 ## Development
 
@@ -74,7 +76,7 @@ git switch dev
 bash scripts/build-appimage.sh
 ```
 
-The script builds the container, installs locked dependencies, checks types, runs tests and generates the AppImage plus `SHA256SUMS` in `artifacts/`. No API key is required to build or run unit tests.
+The script builds the container, installs locked dependencies, checks types, runs tests and generates the AppImage, its `.zsync` update index and `SHA256SUMS` in `artifacts/`. Packaging verifies the embedded update source and checks that the index matches the AppImage. No API key is required to build or run unit tests.
 
 For UI work, use Node.js 22.12 or later:
 
@@ -94,7 +96,7 @@ The browser preview does not authenticate accounts or execute Workers. Native de
 
 Work directly on `dev` or use a short-lived branch. Merge tested work into `release`. Small fixes may go directly to `release`; bring them back into `dev` afterwards. Pull requests are useful, not mandatory for the maintainer.
 
-Every push to `dev` or `release`, and every PR targeting them, runs the build workflow. Successful `release` builds are available as commit-specific artifacts. To publish a version, run **Actions > Publish release** on `release` and choose `current`, `patch`, `minor` or `major`. The workflow updates version files, builds and tests, pushes an immutable `vX.Y.Z` tag, and attaches the AppImage and checksum to a GitHub Release.
+Every push to `dev` or `release`, and every PR targeting them, runs the build workflow. Successful `release` builds are available as commit-specific artifacts. To publish a version, run **Actions > Publish release** on `release` and choose `current`, `patch`, `minor` or `major`. The workflow updates version files, builds and tests, pushes an immutable `vX.Y.Z` tag, and attaches the AppImage, `.zsync` index and checksum to a GitHub Release.
 
 Commits and PR titles use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Example: `fix(linux): match the window ID to its desktop launcher`. See [CHANGELOG.md](CHANGELOG.md) for version history and [CONTRIBUTING.md](CONTRIBUTING.md#publishing) for the release procedure.
 
