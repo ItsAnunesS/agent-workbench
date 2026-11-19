@@ -4,11 +4,17 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-19
+
 ### Changed
 
 - Download and install newer stable GitHub releases automatically on startup by default, preserving existing opt-outs and manual controls. Keep periodic checks informational and activate installed updates when the user reopens the app.
 
 - Replace manual project folder path inputs with a native directory selector, read-only selected paths, cancellation-safe selection and explicit folder detachment. Preserve selected paths exactly, including spaces.
+
+### Features
+
+* **projects:** add native folder selection ([eaaf645](https://github.com/ItsAnunesS/agent-workbench/commit/eaaf645a5e3291982df8e2f31742ada40aa95d0c))
 
 ## [0.11.0] - 2026-11-19
 
