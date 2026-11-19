@@ -50,16 +50,16 @@ Keep identifiers, database names, code comments and canonical system messages in
 
 ## Publishing
 
-1. Ensure the intended changes are on `release` and its Build workflow is green.
-2. Open **Actions > Publish release > Run workflow**, selecting branch `release`.
-3. Choose `current` to publish the version already in the repository, or `patch`, `minor` or `major` to create a new version. Initial publication uses `current`.
-4. The workflow updates `package.json`, the npm lockfile, Cargo package/lock versions, Tauri configuration and the changelog. It builds and tests before pushing the version commit and tag.
+1. Push tested changes to `release`. **Publish release** starts automatically; `dev` pushes and pull requests do not publish versions.
+2. `semantic-release` runs in planning mode, without writing tags or publishing packages. It selects major for breaking changes, minor for features, and patch for other commits, including docs, CI and maintenance. Multiple commits in a push produce one version using their highest increment. Keep repository versions aligned with the latest reachable version tag.
+3. `scripts/version.py` applies the planned version to `package.json`, the npm lockfile, Cargo package/lock versions, Tauri configuration and the changelog. Handwritten `Unreleased` entries are preserved and combined with generated commit notes.
+4. The workflow builds and tests before atomically pushing the version commit and tag. It uploads assets to a draft release before making it public. Its `chore(release): v...` commits are excluded from automatic publication to avoid loops; the normal `GITHUB_TOKEN` also suppresses recursive push-triggered workflows.
 5. The release includes the AppImage, its `.zsync` index and `SHA256SUMS`. Keep both update assets together with their generated names; managers use the embedded `gh-releases-zsync` source to find the latest stable version. The build rejects missing update metadata or an index that does not match the AppImage.
 6. Download the AppImage from GitHub Releases. Merge `release` back into `dev` after a version commit.
 
-Tags use `vX.Y.Z` and are not moved. If `release` changes while the workflow is building, publication stops rather than attaching a build to the wrong commit. If a tag was pushed but the GitHub Release failed, rerun with `current` at that same tagged commit.
+Tags use `vX.Y.Z` and are not moved. If `release` changes while the workflow is building, publication stops rather than attaching a build to the wrong commit. The queued workflow handles the new head. For manual control, open **Actions > Publish release > Run workflow** on `release` and select `auto`, `patch`, `minor` or `major`. If a tag was pushed but publication failed, run with `current` at that same tagged commit. Draft uploads can be retried; already published assets are retained unchanged. No npm publishing or extra repository secrets are used.
 
-Every push also has its own build artifact. A build artifact is not a published version, and documentation-only changes do not automatically consume version numbers.
+Every push also has its own build artifact, distinct from the published version. Documentation-only pushes to `release` now produce patch releases. Run `npm run test:release` inside Docker when changing the policy, version synchronization or workflows; its Git fixtures verify that planning cannot push tags or version commits.
 
 ## Rights
 

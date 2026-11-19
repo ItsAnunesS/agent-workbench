@@ -35,17 +35,23 @@ def next_version(version, bump):
     raise ValueError("Unknown bump")
 
 
-def prepare(bump, root=ROOT, today=None):
+def prepare(bump, root=ROOT, today=None, target_version=None, generated_notes=None):
     old = current_version(root)
-    version = next_version(old, bump)
+    version = target_version or next_version(old, bump)
+    if target_version and (not SEMVER.fullmatch(version) or tuple(map(int, version.split("."))) <= tuple(map(int, old.split(".")))):
+        raise ValueError("The planned release version must be newer than the current version")
     changelog_path = root / "CHANGELOG.md"
     changelog = changelog_path.read_text()
-    if bump != "current":
+    if bump != "current" or target_version:
         marker = "## [Unreleased]\n"
         if marker not in changelog: raise ValueError("CHANGELOG.md needs an Unreleased section")
         if f"## [{version}]" in changelog: raise ValueError("Version already exists in CHANGELOG.md")
         after = changelog.split(marker, 1)[1]
         upcoming = after.split("\n## [", 1)[0].strip()
+        if generated_notes:
+            # semantic-release includes a version heading; the changelog already owns that heading.
+            generated = re.sub(r"\A#{1,2} [^\n]+\n+", "", generated_notes.strip()).strip()
+            upcoming = "\n\n".join(part for part in [upcoming, generated] if part)
         if not upcoming:
             upcoming = "### Changed\n\n- Maintenance release. See the tagged commit history for details."
         date = today or datetime.date.today().isoformat()
@@ -75,13 +81,23 @@ def main():
     parser.add_argument("--bump", choices=["current", "patch", "minor", "major"], default="current")
     parser.add_argument("--notes", type=pathlib.Path)
     parser.add_argument("--output", type=pathlib.Path)
+    parser.add_argument("--plan", type=pathlib.Path)
     args = parser.parse_args()
     if args.command == "check":
         print(current_version()); return
-    version, notes = prepare(args.bump)
+    if args.plan:
+        plan = json.loads(args.plan.read_text())
+        if plan.get("release") is False:
+            if args.output:
+                with args.output.open("a") as output: output.write("release=false\n")
+            print("No new commits to release"); return
+        if plan.get("release") is not True: raise ValueError("Invalid release plan")
+        version, notes = prepare("current", target_version=plan["version"], generated_notes=plan["notes"])
+    else:
+        version, notes = prepare(args.bump)
     if args.notes: args.notes.write_text(notes)
     if args.output:
-        with args.output.open("a") as output: output.write(f"version={version}\ntag=v{version}\n")
+        with args.output.open("a") as output: output.write(f"release=true\nversion={version}\ntag=v{version}\n")
     print(version)
 
 

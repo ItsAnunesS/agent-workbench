@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Automatic releases on pushes to `release`, using semantic-release Conventional Commit analysis, synchronized application versions, generated notes, immutable tags and draft-first AppImage publication. Documentation and maintenance changes also trigger patch releases; generated version commits do not recurse.
 - Tabbed workspace tools with a dashboard, scoped recent pages, lazy project file tree and read-only text previews, Worker-run diff inspection and an expandable panel.
 - Interactive local PTY terminal with bounded output flow, persistent global shell preferences and per-environment overrides, independent of the isolated AI Worker.
 - Native integrated browser with persistent project/conversation profiles for cookies, cache and site storage, HTTP/HTTPS navigation and explicit denial of native IPC to remote pages.

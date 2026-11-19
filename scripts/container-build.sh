@@ -3,6 +3,8 @@ set -euo pipefail
 npm ci
 npm run check
 npm run test
+npm run test:release
+python3 scripts/version.py check
 python3 scripts/test-appimage-updates.py
 cargo test --manifest-path src-tauri/Cargo.toml --locked
 # Embed the standard AppImage update source for Gear Lever and AppImageUpdate.

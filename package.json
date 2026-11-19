@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "check": "tsc -b",
     "test": "vitest run",
+    "test:release": "node --test scripts/test-release.mjs && python3 scripts/test-version.py",
     "tauri": "tauri",
     "appimage": "bash scripts/build-appimage.sh"
   },
@@ -21,11 +22,15 @@
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@tauri-apps/cli": "^2.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
+    "semantic-release": "^25.0.9",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"

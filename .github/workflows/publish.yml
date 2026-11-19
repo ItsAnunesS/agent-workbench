@@ -1,15 +1,17 @@
 name: Publish release
-run-name: Publish release (${{ inputs.bump }})
+run-name: Publish release (${{ github.event_name == 'push' && 'auto' || inputs.bump }})
 
 on:
+  push:
+    branches: [release]
   workflow_dispatch:
     inputs:
       bump:
-        description: Version change (current publishes the version already in the repository)
+        description: Automatic Conventional Commits version, manual bump, or retry current version
         type: choice
         required: true
-        default: patch
-        options: [current, patch, minor, major]
+        default: auto
+        options: [auto, current, patch, minor, major]
 
 permissions:
   contents: write
@@ -20,7 +22,9 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/release'
+    if: >-
+      github.ref == 'refs/heads/release' &&
+      (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release): v'))
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -28,17 +32,39 @@ jobs:
         with:
           ref: release
           fetch-depth: 0
+      - name: Build Docker environment
+        run: docker build --tag agent-workbench-builder .
+      - name: Install and test release tooling
+        run: |
+          docker run --rm --init \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp/workbench-release \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            agent-workbench-builder bash -c 'npm ci && node --test scripts/test-release.mjs'
+          python3 scripts/test-version.py
+          python3 scripts/version.py check
       - name: Prepare version and notes
         id: version
         env:
-          BUMP: ${{ inputs.bump }}
+          BUMP: ${{ github.event_name == 'push' && 'auto' || inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          python3 scripts/test-version.py
-          python3 scripts/version.py prepare --bump "$BUMP" --notes "$RUNNER_TEMP/release-notes.md" --output "$GITHUB_OUTPUT"
-      - name: Build Docker environment
-        run: docker build --tag agent-workbench-builder .
-      - name: Check, test and build AppImage
+          if [ "$BUMP" = auto ]; then
+            docker run --rm --init \
+              --user "$(id -u):$(id -g)" \
+              -e HOME=/tmp/workbench-release -e GH_TOKEN \
+              -v "$GITHUB_WORKSPACE:/workspace" -v "$RUNNER_TEMP:/release-output" \
+              agent-workbench-builder node scripts/plan-release.mjs --plan /release-output/release-plan.json
+            python3 scripts/version.py prepare --plan "$RUNNER_TEMP/release-plan.json" \
+              --notes "$RUNNER_TEMP/release-notes.md" --output "$GITHUB_OUTPUT"
+          else
+            python3 scripts/version.py prepare --bump "$BUMP" \
+              --notes "$RUNNER_TEMP/release-notes.md" --output "$GITHUB_OUTPUT"
+          fi
+      - name: Check, test and build versioned AppImage
+        if: steps.version.outputs.release == 'true'
         run: |
           docker run --rm --init \
             --user "$(id -u):$(id -g)" \
@@ -47,6 +73,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/workspace" \
             agent-workbench-builder
       - name: Publish verified version
+        if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -56,7 +83,7 @@ jobs:
           set -euo pipefail
           git fetch origin release --tags
           if [ "$(git rev-parse origin/release)" != "$SOURCE_SHA" ]; then
-            echo "release changed during the build; rerun the workflow on the new head." >&2
+            echo "release changed during the build; the queued workflow will publish the new head." >&2
             exit 1
           fi
           git config user.name 'github-actions[bot]'
@@ -74,7 +101,17 @@ jobs:
             git tag -a "$TAG" -m "Agent Workbench $VERSION"
             git push --atomic origin HEAD:release "refs/tags/$TAG"
           fi
-          gh release create "$TAG" "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage" \
-            "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage.zsync" artifacts/SHA256SUMS \
-            --verify-tag --title "Agent Workbench $VERSION" \
-            --notes-file "$RUNNER_TEMP/release-notes.md" --latest
+          if gh release view "$TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt"; then
+            if [ "$(cat "$RUNNER_TEMP/release-draft.txt")" = false ]; then
+              echo "This version is already published; keeping its assets unchanged."
+              exit 0
+            fi
+            gh release upload "$TAG" "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage" \
+              "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage.zsync" artifacts/SHA256SUMS --clobber
+          else
+            gh release create "$TAG" "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage" \
+              "artifacts/Agent-Workbench_${VERSION}_amd64.AppImage.zsync" artifacts/SHA256SUMS \
+              --verify-tag --title "Agent Workbench $VERSION" \
+              --notes-file "$RUNNER_TEMP/release-notes.md" --draft
+          fi
+          gh release edit "$TAG" --draft=false --latest

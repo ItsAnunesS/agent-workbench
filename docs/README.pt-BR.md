@@ -119,7 +119,11 @@ A prévia no navegador não autentica contas nem executa Workers. O desenvolvime
 
 Trabalhe direto em `dev` ou use uma branch curta. Leve o trabalho testado para `release`. Correções pequenas podem entrar direto em `release`; depois, sincronize `dev`. PRs são úteis, mas não obrigatórias para o mantenedor.
 
-Cada push para `dev` ou `release`, e cada PR direcionada a elas, executa o build. Builds bem-sucedidos de `release` ficam disponíveis como artefatos por commit. Para publicar uma versão, execute **Actions > Publish release**, em `release`, e escolha `current`, `patch`, `minor` ou `major`. O workflow atualiza as versões, compila, testa, cria a tag imutável `vX.Y.Z` e publica o AppImage, o índice `.zsync` e seu checksum em uma GitHub Release.
+Cada push para `dev` ou `release`, e cada PR direcionada a elas, executa o build. Cada push em `release` também inicia **Publish release** automaticamente. O `semantic-release` analisa os commits desde a última tag de versão alcançável: `feat` incrementa a versão minor, alterações incompatíveis (`!` ou rodapé `BREAKING CHANGE:`) incrementam a major, e os demais commits, incluindo documentação e manutenção, incrementam a patch. Um push com vários commits usa o maior incremento aplicável e publica uma versão.
+
+O publicador sincroniza `package.json`, `package-lock.json`, o pacote e lockfile do Cargo, a configuração do Tauri e `CHANGELOG.md`, combinando as notas escritas com as notas geradas dos commits. Ele compila e testa antes de enviar atomicamente o commit de versão e a tag imutável `vX.Y.Z`. A GitHub Release só fica pública depois do envio do AppImage, índice `.zsync` e checksums. Os commits automáticos `chore(release): v...` não criam outra versão. Não há publicação no npm nem necessidade de token pessoal.
+
+**Actions > Publish release > Run workflow** continua disponível com `auto`, incrementos explícitos `patch`/`minor`/`major`, ou `current` para recuperar uma versão com tag após publicação interrompida. Tags e arquivos de versões públicas não são sobrescritos. Se a branch avançar durante o build, aquela publicação para e o workflow na fila publica as mudanças mais recentes. Sincronize o commit de versão gerado com `dev` antes de continuar o desenvolvimento nela.
 
 Commits e títulos de PR seguem [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). Exemplo: `fix(linux): match the window ID to its desktop launcher`. Consulte o [CHANGELOG.md](../CHANGELOG.md) e o [procedimento de publicação](../CONTRIBUTING.md#publishing).
 
