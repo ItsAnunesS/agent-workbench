@@ -209,7 +209,8 @@ fn scope(
         .iter()
         .find(|item| item.id == environment)
         .ok_or("Environment unavailable.")?;
-    let instructions = format!("{}\n\nProject memory:\n{}\n\nWork only in /workspace. Commands have no network access. Never request host access, Docker, credentials, or additional mounts. Ask the user when a task cannot be completed inside this boundary.", environment.instructions, project.memory);
+    let global = crate::settings::read(&db)?;
+    let instructions = format!("{}\n\nProject memory:\n{}\n\nWork only in /workspace. Commands have no network access. Never request host access, Docker, credentials, or additional mounts. Ask the user when a task cannot be completed inside this boundary.", global.instructions(&environment.instructions), project.memory);
     // Rebuild context solely from this Worker's local history. Chat is included only by explicit handoff.
     let history = task
         .messages
@@ -1078,6 +1079,56 @@ async fn execute(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn worker_combines_persisted_global_rules_with_only_the_selected_project_context() {
+        let connection = rusqlite::Connection::open_in_memory().unwrap();
+        crate::initialize_database(&connection).unwrap();
+        let mut workspace = crate::initial_workspace();
+        workspace.environments[0].instructions = "Selected workspace rules".into();
+        workspace.environments[1].instructions = "Other private workspace".into();
+        workspace.projects.push(crate::Project {
+            id: "p".into(),
+            environment_id: "personal".into(),
+            name: "Project".into(),
+            path: "/projects/fixture".into(),
+            memory: "Selected project memory".into(),
+            archived: false,
+            pinned: false,
+        });
+        let mut task = crate::tests::conversation("personal", "worker");
+        task.project_id = Some("p".into());
+        workspace.conversations.push(task);
+        connection
+            .execute(
+                "INSERT INTO workspace(id,data) VALUES(1,?1)",
+                rusqlite::params![serde_json::to_string(&workspace).unwrap()],
+            )
+            .unwrap();
+        let global = crate::settings::AppSettings {
+            agents_markdown: "App-wide rules".into(),
+            branch_convention: "feature/{ticket}".into(),
+            ..Default::default()
+        };
+        connection
+            .execute(
+                "INSERT INTO app_settings(id,data) VALUES(1,?1)",
+                rusqlite::params![serde_json::to_string(&global).unwrap()],
+            )
+            .unwrap();
+        let database = Database(Mutex::new(connection));
+        let (_, instructions, _, _) = scope(&database, "personal", "conversation").unwrap();
+        for expected in [
+            "App-wide rules",
+            "feature/{ticket}",
+            "Selected workspace rules",
+            "Selected project memory",
+            "Commands have no network access",
+        ] {
+            assert!(instructions.contains(expected));
+        }
+        assert!(!instructions.contains("Other private workspace"));
+    }
 
     #[test]
     fn automatic_review_requires_an_explicit_low_risk_decision() {

@@ -11,13 +11,27 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.addInitScript(() => {
+  await page.addInitScript((defaults) => {
+    let globalSettings =
+      JSON.parse(localStorage.getItem("fixture-global-settings") || "null") ||
+      defaults;
     window.isTauri = true;
     window.windowCalls = [];
     let maximized = false;
     window.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" } },
       invoke: async (command, args = {}) => {
+        if (command === "load_app_settings")
+          return structuredClone(globalSettings);
+        if (command === "save_app_settings") {
+          globalSettings = structuredClone(args.settings);
+          localStorage.setItem(
+            "fixture-global-settings",
+            JSON.stringify(globalSettings),
+          );
+          return;
+        }
+
         if (command.startsWith("plugin:window|")) {
           window.windowCalls.push({ command, label: args.label });
           if (command.endsWith("is_maximized")) return maximized;
@@ -28,8 +42,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           return;
         }
         if (command === "desktop_integration_status")
-          return { supported: true, installed: false, issue: "Could not check system integration." };
-        if (command === "desktop_integration_repair") { window.desktopRepaired = true; return { supported: true, installed: true, issue: null }; }
+          return {
+            supported: true,
+            installed: false,
+            issue: "Could not check system integration.",
+          };
+        if (command === "desktop_integration_repair") {
+          window.desktopRepaired = true;
+          return { supported: true, installed: true, issue: null };
+        }
         if (command === "load_workspace")
           return {
             version: 1,
@@ -46,11 +67,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           };
         if (command === "openai_accounts") return [];
         if (command === "worker_runtime")
-          return { available: true, ready: true, message: "Codex is ready. Execution is isolated by project." };
+          return {
+            available: true,
+            ready: true,
+            message: "Codex is ready. Execution is isolated by project.",
+          };
         throw `Unexpected command: ${command}`;
       },
     };
-  });
+  }, require("../src/global-settings-defaults.json"));
   await page.goto("http://127.0.0.1:1420");
   await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   // Exercise the drag handler shipped by the installed Tauri version, including its interactive-element guard.
@@ -129,14 +154,23 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Global settings", exact: true }).click();
-  await page.getByText("Could not check system integration.", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Repair integration", exact: true }).click();
-  await page.getByText("The logo and launcher are registered in this user's application menu.", { exact: true }).waitFor();
-  assert.equal(await page.evaluate(() => window.desktopRepaired), true);
   await page
-    .getByRole("button", { name: "Close window", exact: true })
+    .getByRole("button", { name: "Global settings", exact: true })
     .click();
+  await page
+    .getByText("Could not check system integration.", { exact: true })
+    .waitFor();
+  await page
+    .getByRole("button", { name: "Repair integration", exact: true })
+    .click();
+  await page
+    .getByText(
+      "The logo and launcher are registered in this user's application menu.",
+      { exact: true },
+    )
+    .waitFor();
+  assert.equal(await page.evaluate(() => window.desktopRepaired), true);
+  await page.getByRole("button", { name: "Close window", exact: true }).click();
   await page.keyboard.press("Escape");
   const calls = await page.evaluate(() => window.windowCalls);
   assert.ok(

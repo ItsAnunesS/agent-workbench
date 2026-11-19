@@ -69,7 +69,9 @@ Subscription access depends on account eligibility and the models granted by Ope
 
 On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Global settings > Repair integration** refreshes the launcher.
 
-The bottom icon in the environment rail opens **Global settings** for language, appearance, desktop integration, the shared Worker runtime and app information. The OpenAI card opens **Workspace settings** for the selected environment's account and instructions, including when a project is selected.
+The bottom icon in the environment rail opens **Global settings** for language, appearance, desktop integration, the shared Worker runtime and app information. Expand **Global AGENTS.md and Git conventions** to edit shared instructions and commit, pull request and branch naming conventions, then click **Save global instructions**. These settings persist across workspaces and are included in new Chat requests and Worker task context. They guide generated work without automatically executing Git actions. The global AGENTS.md editor stores app instructions without modifying existing AGENTS.md files on your computer or in projects.
+
+The OpenAI card opens **Workspace settings** for the selected environment's account and instructions. With a project selected, this panel also shows its folder and memory, with actions to edit them. Workspace instructions and project memory remain specific to their environment and project, and combine with the global instructions.
 
 Choose **Global settings > Language** to change the app language. Existing environment names, conversations, project memory, model responses, code and command output are preserved as written. New installations create the default environments as **Personal** and **Work**.
 

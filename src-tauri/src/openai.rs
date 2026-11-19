@@ -765,6 +765,7 @@ pub(crate) fn api_error(status: u16, code: &str) -> String {
 
 fn chat_input(
     workspace: &super::Workspace,
+    settings: &crate::settings::AppSettings,
     environment_id: &str,
     conversation_id: &str,
     model: &str,
@@ -787,7 +788,7 @@ fn chat_input(
                 && !conversation.archived
         })
         .ok_or("This conversation is not a Chat in this environment.")?;
-    let mut instructions = environment.instructions.clone();
+    let mut instructions = settings.instructions(&environment.instructions);
     if let Some(project_id) = &conversation.project_id {
         let project = workspace
             .projects
@@ -870,6 +871,7 @@ pub async fn openai_chat(
             let connection = database.0.lock().map_err(|_| "Local data unavailable.")?;
             chat_input(
                 &super::read_workspace(&connection)?,
+                &crate::settings::read(&connection)?,
                 &environment_id,
                 &conversation_id,
                 &model,
@@ -1342,14 +1344,40 @@ mod tests {
             worker_run_id: None,
         });
         workspace.conversations.push(conversation);
-        assert!(chat_input(&workspace, "work", "conversation", "model").is_err());
-        assert_eq!(
-            chat_input(&workspace, "personal", "conversation", "model").unwrap()["instructions"],
-            "Private instructions"
-        );
+        assert!(chat_input(
+            &workspace,
+            &crate::settings::AppSettings::default(),
+            "work",
+            "conversation",
+            "model"
+        )
+        .is_err());
+        let settings = crate::settings::AppSettings {
+            agents_markdown: "Global instruction".into(),
+            ..Default::default()
+        };
+        let input = chat_input(&workspace, &settings, "personal", "conversation", "model").unwrap();
+        let instructions = input["instructions"].as_str().unwrap();
+        assert!(instructions.contains("Global instruction"));
+        assert!(instructions.contains("Private instructions"));
+        assert!(!instructions.contains("Work instructions"));
         workspace.conversations[0].archived = true;
-        assert!(chat_input(&workspace, "personal", "conversation", "model").is_err());
+        assert!(chat_input(
+            &workspace,
+            &crate::settings::AppSettings::default(),
+            "personal",
+            "conversation",
+            "model"
+        )
+        .is_err());
         workspace.conversations[0].mode = "worker".into();
-        assert!(chat_input(&workspace, "personal", "conversation", "model").is_err());
+        assert!(chat_input(
+            &workspace,
+            &crate::settings::AppSettings::default(),
+            "personal",
+            "conversation",
+            "model"
+        )
+        .is_err());
     }
 }

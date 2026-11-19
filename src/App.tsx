@@ -1,3 +1,4 @@
+import { GlobalInstructionsSettings } from "./components/GlobalInstructionsSettings";
 import { Fragment } from "react";
 import {
   WorkspaceSidebar,
@@ -1779,6 +1780,7 @@ export default function App() {
                   value={appearance.preference}
                   onChange={appearance.selectTheme}
                 />
+                <GlobalInstructionsSettings />
                 <DesktopIntegration />
                 <WorkerSetup worker={worker} />
                 {worker.issue && (
@@ -1915,6 +1917,50 @@ export default function App() {
                     {t("Edit workspace instructions")}
                   </button>
                 </div>
+                <section className="settings-workspace-project">
+                  <h3>{t("Project settings")}</h3>
+                  {project ? (
+                    <>
+                      <strong>{project.name}</strong>
+                      <p className="subtle">{t("Project folder")}</p>
+                      <code className="settings-project-path">
+                        {project.path || t("No folder linked")}
+                      </code>
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={!!worker.active || !!project.archived}
+                        onClick={() => openDialog("projectPath")}
+                      >
+                        {t("Set folder")}
+                      </button>
+                      <h4>{t("Project memory")}</h4>
+                      <p className="memory-preview">
+                        {project.memory ||
+                          t(
+                            "Add preferences and decisions to keep in this workspace.",
+                          )}
+                      </p>
+                      <button
+                        type="button"
+                        className="text-button"
+                        disabled={!!project.archived}
+                        onClick={() => openDialog("memory")}
+                      >
+                        {t("Edit project memory")}
+                      </button>
+                      <p className="subtle">
+                        {t(
+                          "Project memory and the selected workspace instructions are combined with global instructions for Chat and Worker.",
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="subtle">
+                      {t("Select a project to manage its folder and memory.")}
+                    </p>
+                  )}
+                </section>
                 <button
                   className="primary-button full-width"
                   onClick={() => setDialog(null)}

@@ -69,7 +69,9 @@ O acesso pela assinatura depende da elegibilidade da conta e dos modelos liberad
 
 No Linux, o AppImage registra o atalho e o logo no menu de aplicativos do usuário. Se mover o arquivo, abra-o uma vez no novo local. A opção **Reparar integração**, nas definições globais, atualiza o atalho.
 
-O ícone inferior da barra de ambientes abre as **definições globais**, com idioma, aparência, integração desktop, runtime compartilhado do Worker e informações do app. O cartão OpenAI abre as **definições do workspace**, com a conta e as instruções do ambiente selecionado, mesmo quando um projeto está aberto.
+O ícone inferior da barra de ambientes abre as **definições globais**, com idioma, aparência, integração desktop, runtime compartilhado do Worker e informações do app. Expanda **AGENTS.md global e convenções Git** para editar as instruções compartilhadas e os padrões de commits, pull requests e nomes de branches. Clique em **Guardar instruções globais** para salvar. Essas configurações persistem entre workspaces e entram nas novas solicitações do Chat e no contexto das tarefas do Worker. Elas orientam o trabalho gerado sem executar ações Git automaticamente. O editor de AGENTS.md global armazena instruções do app sem modificar arquivos AGENTS.md existentes no computador ou nos projetos.
+
+O cartão OpenAI abre as **definições do workspace**, com a conta e as instruções do ambiente selecionado. Com um projeto selecionado, esse painel também mostra sua pasta e memória, com ações para editá-las. As instruções do workspace e a memória do projeto continuam específicas de cada ambiente e projeto, combinadas com as instruções globais.
 
 Use **Global settings > Language** para mudar o idioma. Os nomes dos ambientes existentes, conversas, memória dos projetos, respostas dos modelos, código e saída dos comandos são preservados como foram escritos. Novas instalações criam os ambientes padrão como **Personal** e **Work**.
 

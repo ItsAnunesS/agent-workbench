@@ -4,6 +4,7 @@ mod auth_page;
 mod desktop;
 mod i18n;
 mod openai;
+mod settings;
 mod worker;
 
 use rusqlite::{params, Connection};
@@ -193,6 +194,7 @@ fn validate_workspace(workspace: &Workspace) -> Result<(), String> {
 struct Database(Mutex<Connection>);
 
 fn initialize_database(connection: &Connection) -> rusqlite::Result<()> {
+    settings::initialize(connection)?;
     connection.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS workspace (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT NOT NULL);")?;
     Ok(())
 }
@@ -318,6 +320,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             load_workspace,
+            settings::load_app_settings,
+            settings::save_app_settings,
             save_workspace,
             desktop::desktop_integration_status,
             desktop::desktop_integration_repair,

@@ -1,0 +1,6 @@
+{
+  "agentsMarkdown": "",
+  "commitConvention": "Use Conventional Commits: <type>(<scope>): <description>. Write concise, imperative commit messages in English.",
+  "pullRequestConvention": "Write pull request titles and descriptions in English. Explain the problem, the resulting behavior and the validation performed.",
+  "branchConvention": "Use codex/<short-kebab-case-description> for new branches."
+}

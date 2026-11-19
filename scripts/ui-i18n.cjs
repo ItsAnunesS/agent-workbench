@@ -12,7 +12,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript(
-    ({ portuguese }) => {
+    ({ portuguese, globalDefaults }) => {
+      let globalSettings =
+        JSON.parse(localStorage.getItem("fixture-global-settings") || "null") ||
+        globalDefaults;
       window.isTauri = true;
       window.apiCalls = [];
       let workspace = {
@@ -31,6 +34,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       window.__TAURI_INTERNALS__ = {
         metadata: { currentWindow: { label: "main" } },
         invoke: async (command, args = {}) => {
+          if (command === "load_app_settings")
+            return structuredClone(globalSettings);
+          if (command === "save_app_settings") {
+            globalSettings = structuredClone(args.settings);
+            localStorage.setItem(
+              "fixture-global-settings",
+              JSON.stringify(globalSettings),
+            );
+            return;
+          }
+
           if (command.startsWith("plugin:window|")) return false;
           window.apiCalls.push({ command, locale: args.locale });
           const message = (key) =>
@@ -62,7 +76,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         },
       };
     },
-    { portuguese },
+    {
+      portuguese,
+      globalDefaults: require("../src/global-settings-defaults.json"),
+    },
   );
   await page.goto("http://127.0.0.1:1420");
   await page

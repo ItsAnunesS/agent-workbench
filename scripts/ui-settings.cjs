@@ -8,7 +8,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.addInitScript(() => {
+  await page.addInitScript((defaults) => {
+    let globalSettings =
+      JSON.parse(localStorage.getItem("fixture-global-settings") || "null") ||
+      defaults;
     window.isTauri = true;
     let workspace = {
       version: 1,
@@ -40,6 +43,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     window.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" } },
       invoke: async (command, args = {}) => {
+        if (command === "load_app_settings")
+          return structuredClone(globalSettings);
+        if (command === "save_app_settings") {
+          globalSettings = structuredClone(args.settings);
+          localStorage.setItem(
+            "fixture-global-settings",
+            JSON.stringify(globalSettings),
+          );
+          return;
+        }
+
         if (command.startsWith("plugin:window|")) return false;
         if (command === "load_workspace") return structuredClone(workspace);
         if (command === "save_workspace") {
@@ -67,7 +81,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         throw new Error(`Unexpected command: ${command}`);
       },
     };
-  });
+  }, require("../src/global-settings-defaults.json"));
   await page.goto("http://127.0.0.1:1420");
   const dialog = page.getByRole("dialog");
   const globalSettings = () =>
@@ -89,6 +103,27 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   await dialog.getByText("System integration", { exact: true }).waitFor();
   await dialog.getByText("Codex runtime", { exact: true }).waitFor();
+  await dialog
+    .getByText("Global AGENTS.md and Git conventions", { exact: true })
+    .click();
+  await dialog
+    .getByRole("textbox", { name: "Global AGENTS.md", exact: true })
+    .fill("# Global rules\nInclude validation in every task.");
+  await dialog
+    .getByRole("textbox", { name: "Commit convention", exact: true })
+    .fill("fix(scope): concise English description");
+  await dialog
+    .getByRole("textbox", { name: "Pull request convention", exact: true })
+    .fill("Describe behavior and validation.");
+  await dialog
+    .getByRole("textbox", { name: "Branch naming convention", exact: true })
+    .fill("feature/{ticket}-{description}");
+  await dialog
+    .getByRole("button", { name: "Save global instructions", exact: true })
+    .click();
+  await dialog
+    .getByText("Global instructions saved.", { exact: true })
+    .waitFor();
   await page.screenshot({
     path: "/workspace/artifacts/global-settings.png",
     fullPage: true,
@@ -107,6 +142,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     0,
   );
   assert.equal(await dialog.getByRole("radio").count(), 0);
+  assert.equal(
+    await dialog
+      .getByRole("textbox", { name: "Global AGENTS.md", exact: true })
+      .count(),
+    0,
+  );
+  await dialog.getByText("Project settings", { exact: true }).waitFor();
+  await dialog.getByText("/projects/fixture", { exact: true }).waitFor();
+  await dialog.getByText("Project memory stays", { exact: true }).waitFor();
   assert.equal(
     await dialog.getByText("Codex runtime", { exact: true }).count(),
     0,
@@ -142,6 +186,21 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   await page.keyboard.press("Escape");
   await globalSettings();
+  await dialog
+    .getByText("Global AGENTS.md and Git conventions", { exact: true })
+    .click();
+  assert.equal(
+    await dialog
+      .getByRole("textbox", { name: "Global AGENTS.md", exact: true })
+      .inputValue(),
+    "# Global rules\nInclude validation in every task.",
+  );
+  assert.equal(
+    await dialog
+      .getByRole("textbox", { name: "Branch naming convention", exact: true })
+      .inputValue(),
+    "feature/{ticket}-{description}",
+  );
   assert.equal(
     await dialog.getByRole("radio", { name: "Dark", exact: true }).isChecked(),
     true,
@@ -158,6 +217,20 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("heading", { name: "Definições do workspace", exact: true })
     .waitFor();
   await dialog.getByText("work@example.test", { exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Definições globais", exact: true })
+    .click();
+  await dialog
+    .getByText("AGENTS.md global e convenções Git", { exact: true })
+    .click();
+  assert.equal(
+    await dialog
+      .getByRole("textbox", { name: "AGENTS.md global", exact: true })
+      .inputValue(),
+    "# Global rules\nInclude validation in every task.",
+  );
   assert.deepEqual(errors, []);
   console.log(
     "Settings UI passed: global/workspace routes, isolated accounts and instructions, preserved project memory, shared appearance and localized labels.",
