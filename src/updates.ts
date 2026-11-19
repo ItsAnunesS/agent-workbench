@@ -24,26 +24,41 @@ export function useUpdates() {
   const [checked, setChecked] = useState(false);
   const operation = useRef(false);
   const installed = useRef(false);
+  const automaticRef = useRef(automatic);
 
-  const check = useCallback(async () => {
+  const download = useCallback(async (version: string) => {
+    setPhase("downloading");
+    setProgress(null);
+    const channel = new Channel<DownloadProgress>();
+    channel.onmessage = setProgress;
+    await invoke("app_update_install", { version, progress: channel });
+    installed.current = true;
+    setPhase("installed");
+  }, []);
+
+  const check = useCallback(async (installAutomatically = false) => {
     if (!isTauri() || operation.current || installed.current) return;
     operation.current = true;
     setPhase("checking");
     setIssue("");
     try {
-      setStatus(await invoke<UpdateStatus>("app_update_check"));
+      const next = await invoke<UpdateStatus>("app_update_check");
+      setStatus(next);
       setChecked(true);
+      if (installAutomatically && automaticRef.current && next.supported && next.version) {
+        await download(next.version);
+      }
     } catch (error) {
       setIssue(String(error));
     } finally {
       operation.current = false;
-      setPhase("idle");
+      if (!installed.current) setPhase("idle");
     }
-  }, []);
+  }, [download]);
 
   useEffect(() => {
     if (!automatic || !isTauri()) return;
-    const startup = window.setTimeout(() => void check(), 3000);
+    const startup = window.setTimeout(() => void check(true), 3000);
     const interval = window.setInterval(() => void check(), 6 * 60 * 60 * 1000);
     return () => {
       window.clearTimeout(startup);
@@ -52,6 +67,7 @@ export function useUpdates() {
   }, [automatic, check]);
 
   function selectAutomatic(value: boolean) {
+    automaticRef.current = value;
     setAutomatic(value);
     try {
       localStorage.setItem(preferenceKey, String(value));
@@ -63,20 +79,14 @@ export function useUpdates() {
   async function install() {
     if (!status?.version || operation.current || installed.current) return;
     operation.current = true;
-    setPhase("downloading");
     setIssue("");
-    setProgress(null);
-    const channel = new Channel<DownloadProgress>();
-    channel.onmessage = setProgress;
     try {
-      await invoke("app_update_install", { version: status.version, progress: channel });
-      installed.current = true;
-      setPhase("installed");
+      await download(status.version);
     } catch (error) {
       setIssue(String(error));
-      setPhase("idle");
     } finally {
       operation.current = false;
+      if (!installed.current) setPhase("idle");
     }
   }
 

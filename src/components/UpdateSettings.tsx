@@ -16,9 +16,9 @@ export function UpdateSettings({ updates }: { updates: AppUpdates }) {
         <label className="update-preference">
           <input type="checkbox" checked={updates.automatic}
             onChange={(event) => updates.selectAutomatic(event.target.checked)} />
-          {t("Check GitHub releases automatically")}
+          {t("Check and install updates on startup")}
         </label>
-        <p className="subtle">{t("Checks on startup and every six hours. Downloads only when you choose to install.")}</p>
+        <p className="subtle">{t("Installs new GitHub releases automatically on startup and checks every six hours. Close and reopen the app to use an installed update.")}</p>
         <p role="status" aria-live="polite">
           {updates.phase === "installed"
             ? t("Update installed. Close and reopen the app when your work is finished.")

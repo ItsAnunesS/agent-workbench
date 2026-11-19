@@ -6,6 +6,8 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Changed
 
+- Download and install newer stable GitHub releases automatically on startup by default, preserving existing opt-outs and manual controls. Keep periodic checks informational and activate installed updates when the user reopens the app.
+
 - Replace manual project folder path inputs with a native directory selector, read-only selected paths, cancellation-safe selection and explicit folder detachment. Preserve selected paths exactly, including spaces.
 
 ## [0.11.0] - 2026-11-19
