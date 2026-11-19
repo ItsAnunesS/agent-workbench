@@ -4,10 +4,16 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-19
+
 ### Changed
 
 - Publish verified release snapshots even when newer commits arrive during the build, synchronizing version metadata without losing newer code, dependencies or unreleased notes, and retrying push races without rewriting history.
 - Avoid duplicate release-branch AppImage builds, npm installs, type checks and release-tooling tests. Reuse release-profile Rust compilation and add Docker/npm/Cargo CI caches plus stage timings while retaining all test suites.
+
+### Bug Fixes
+
+* **release:** publish snapshots across concurrent pushes ([116ed20](https://github.com/ItsAnunesS/agent-workbench/commit/116ed20dc3d00bb082ac62a1c606193fd8775830))
 
 ## [0.9.0] - 2026-11-19
 
