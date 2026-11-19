@@ -114,6 +114,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         if (command === "load_app_settings") return defaults;
         if (command === "desktop_integration_status")
           return { supported: true, installed: true, issue: null };
+        if (command === "project_agents") return { path: null, content: null };
         if (command === "terminal_preferences")
           return {
             global,

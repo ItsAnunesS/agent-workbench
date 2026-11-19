@@ -806,6 +806,7 @@ fn chat_input(
     environment_id: &str,
     conversation_id: &str,
     model: &str,
+    app_directory: &Path,
 ) -> Result<Value, String> {
     if model.is_empty() || model.len() > 160 {
         return Err("Select a valid model.".into());
@@ -838,6 +839,10 @@ fn chat_input(
             .ok_or("Project unavailable in this environment.")?;
         instructions.push_str("\n\nProject context:\n");
         instructions.push_str(&project.memory);
+        crate::project_instructions::append(
+            &mut instructions,
+            &crate::project_instructions::read(project, app_directory)?,
+        );
     }
     let input: Vec<Value> = conversation
         .messages
@@ -913,6 +918,7 @@ pub async fn openai_chat(
                 &environment_id,
                 &conversation_id,
                 &model,
+                state.path.parent().ok_or("Could not access local data.")?,
             )?
         };
         let cancel = CancellationToken::new();
@@ -1398,6 +1404,94 @@ mod tests {
     }
 
     #[test]
+    fn chat_loads_only_its_selected_project_root_instructions_and_refreshes_each_request() {
+        let root =
+            std::env::temp_dir().join(format!("workbench-chat-rules-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        std::fs::write(root.join("AGENTS.md"), "Selected project rules").unwrap();
+        let mut workspace = super::super::initial_workspace();
+        workspace.projects.push(super::super::Project {
+            id: "p".into(),
+            environment_id: "personal".into(),
+            name: "Project".into(),
+            path: root.to_string_lossy().into_owned(),
+            memory: "Project memory".into(),
+            archived: false,
+            pinned: false,
+        });
+        let mut chat = super::super::tests::conversation("personal", "chat");
+        chat.project_id = Some("p".into());
+        chat.messages.push(super::super::Message {
+            id: "m".into(),
+            content: "Hello".into(),
+            created_at: String::new(),
+            role: "user".into(),
+            status: None,
+            duration_ms: None,
+            summary: None,
+            worker_run_id: None,
+        });
+        workspace.conversations.push(chat);
+        let settings = crate::settings::AppSettings::default();
+        let directory = Path::new("/tmp/workbench-private-data");
+        let first = chat_input(
+            &workspace,
+            &settings,
+            "personal",
+            "conversation",
+            "model",
+            directory,
+        )
+        .unwrap();
+        assert!(first["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("Selected project rules"));
+        std::fs::write(root.join("AGENTS.md"), "Updated project rules").unwrap();
+        let next = chat_input(
+            &workspace,
+            &settings,
+            "personal",
+            "conversation",
+            "model",
+            directory,
+        )
+        .unwrap();
+        assert!(next["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("Updated project rules"));
+        assert!(!next["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("Selected project rules"));
+        workspace.projects[0].environment_id = "work".into();
+        assert!(chat_input(
+            &workspace,
+            &settings,
+            "personal",
+            "conversation",
+            "model",
+            directory
+        )
+        .is_err());
+        workspace.conversations[0].project_id = None;
+        let standalone = chat_input(
+            &workspace,
+            &settings,
+            "personal",
+            "conversation",
+            "model",
+            directory,
+        )
+        .unwrap();
+        assert!(!standalone["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("Updated project rules"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
     fn chat_never_reads_another_environment_or_worker() {
         let mut workspace = super::super::initial_workspace();
         workspace.environments[0].instructions = "Private instructions".into();
@@ -1419,14 +1513,23 @@ mod tests {
             &crate::settings::AppSettings::default(),
             "work",
             "conversation",
-            "model"
+            "model",
+            Path::new("/tmp/workbench-test-data")
         )
         .is_err());
         let settings = crate::settings::AppSettings {
             agents_markdown: "Global instruction".into(),
             ..Default::default()
         };
-        let input = chat_input(&workspace, &settings, "personal", "conversation", "model").unwrap();
+        let input = chat_input(
+            &workspace,
+            &settings,
+            "personal",
+            "conversation",
+            "model",
+            Path::new("/tmp/workbench-test-data"),
+        )
+        .unwrap();
         let instructions = input["instructions"].as_str().unwrap();
         assert!(instructions.contains("Global instruction"));
         assert!(instructions.contains("Private instructions"));
@@ -1437,7 +1540,8 @@ mod tests {
             &crate::settings::AppSettings::default(),
             "personal",
             "conversation",
-            "model"
+            "model",
+            Path::new("/tmp/workbench-test-data")
         )
         .is_err());
         workspace.conversations[0].mode = "worker".into();
@@ -1446,7 +1550,8 @@ mod tests {
             &crate::settings::AppSettings::default(),
             "personal",
             "conversation",
-            "model"
+            "model",
+            Path::new("/tmp/workbench-test-data")
         )
         .is_err());
     }

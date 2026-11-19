@@ -19,6 +19,7 @@ There is no guaranteed response SLA. The maintainer will investigate and coordin
 - Worker commands have no external network access. Model requests are forwarded by the host to fixed OpenAI endpoints.
 - Approval grants are one-time and scoped to the active task. They do not add host mounts or network access.
 - Do not select a home directory or place credentials inside a project folder. Mounted project contents are available to the Worker.
+- A linked project's root `AGENTS.md` (or lowercase fallback `agents.md`) is included in Chat and Worker instructions. Reads validate project scope and protected paths, reject symlinks/non-regular files, and accept only UTF-8 text without null bytes up to 128 KiB. Project instructions do not authorize additional mounts, native IPC, credentials or network access.
 - Chat and Worker keep independent local histories. An explicit handoff copies selected conversation context.
 - The Files tool provides manual, read-only previews scoped to the selected project. Native path validation rejects traversal and symlinks that escape the project. Previewing a file does not add it to a model request.
 - The local terminal is controlled by the user and runs a real shell on the host. It inherits the user's process environment and is separate from the AI Worker's Docker execution and approval flow.

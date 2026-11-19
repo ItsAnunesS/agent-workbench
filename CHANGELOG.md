@@ -10,6 +10,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Automatic root AGENTS.md detection as project-specific workspace instructions for Chat and Worker, with source preview, refresh, lowercase fallback, bounded safe reads and per-request reloads. Global/manual settings remain separate and project rules cannot expand runtime permissions.
 - Visible rename action beside conversation and task titles, sharing the existing sidebar rename dialog and persisted workspace names. Custom names are preserved when sending the first message.
 - Usage panel with persisted, account/environment-scoped token counts from Chat, Worker and automatic approval reviews, daily history and recent reported responses. Missing counts remain unknown; cached/reasoning subsets are not double-counted. Plan allowance and credits link to the official ChatGPT usage page because the current connection does not expose those values.
 

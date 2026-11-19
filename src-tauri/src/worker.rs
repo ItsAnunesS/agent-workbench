@@ -182,6 +182,7 @@ fn scope(
     database: &Database,
     environment: &str,
     conversation: &str,
+    app_directory: &Path,
 ) -> Result<(crate::Project, String, String, Option<String>), String> {
     let db = database.0.lock().map_err(|_| "Local data unavailable.")?;
     let workspace = read_workspace(&db)?;
@@ -210,7 +211,16 @@ fn scope(
         .find(|item| item.id == environment)
         .ok_or("Environment unavailable.")?;
     let global = crate::settings::read(&db)?;
-    let instructions = format!("{}\n\nProject memory:\n{}\n\nWork only in /workspace. Commands have no network access. Never request host access, Docker, credentials, or additional mounts. Ask the user when a task cannot be completed inside this boundary.", global.instructions(&environment.instructions), project.memory);
+    let mut instructions = format!(
+        "{}\n\nProject memory:\n{}",
+        global.instructions(&environment.instructions),
+        project.memory
+    );
+    crate::project_instructions::append(
+        &mut instructions,
+        &crate::project_instructions::read(project, app_directory)?,
+    );
+    instructions.push_str("\n\nWork only in /workspace. Commands have no network access. Never request host access, Docker, credentials, or additional mounts. Ask the user when a task cannot be completed inside this boundary.");
     // Rebuild context solely from this Worker's local history. Chat is included only by explicit handoff.
     let history = task
         .messages
@@ -819,7 +829,7 @@ pub async fn worker_run(
             return Err("This task identifier has already been used.".into());
         }
     }
-    let (project, instructions, history, user_message_id) = scope(&database, &environment_id, &conversation_id)?;
+    let (project, instructions, history, user_message_id) = scope(&database, &environment_id, &conversation_id, &state.directory)?;
     if history.trim().is_empty() || history.len() > MAX_OUTPUT {
         return Err("The task is empty or has too much context. Create a smaller task.".into());
     }
@@ -1127,6 +1137,10 @@ mod tests {
 
     #[test]
     fn worker_combines_persisted_global_rules_with_only_the_selected_project_context() {
+        let directory =
+            std::env::temp_dir().join(format!("workbench-project-rules-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&directory).unwrap();
+        std::fs::write(directory.join("AGENTS.md"), "Selected root instructions").unwrap();
         let connection = rusqlite::Connection::open_in_memory().unwrap();
         crate::initialize_database(&connection).unwrap();
         let mut workspace = crate::initial_workspace();
@@ -1136,7 +1150,7 @@ mod tests {
             id: "p".into(),
             environment_id: "personal".into(),
             name: "Project".into(),
-            path: "/projects/fixture".into(),
+            path: directory.to_string_lossy().into_owned(),
             memory: "Selected project memory".into(),
             archived: false,
             pinned: false,
@@ -1162,17 +1176,25 @@ mod tests {
             )
             .unwrap();
         let database = Database(Mutex::new(connection));
-        let (_, instructions, _, _) = scope(&database, "personal", "conversation").unwrap();
+        let (_, instructions, _, _) = scope(
+            &database,
+            "personal",
+            "conversation",
+            Path::new("/tmp/workbench-test-data"),
+        )
+        .unwrap();
         for expected in [
             "App-wide rules",
             "feature/{ticket}",
             "Selected workspace rules",
             "Selected project memory",
+            "Selected root instructions",
             "Commands have no network access",
         ] {
             assert!(instructions.contains(expected));
         }
         assert!(!instructions.contains("Other private workspace"));
+        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]
@@ -1395,7 +1417,19 @@ mod tests {
             )
             .unwrap();
         let db = Database(Mutex::new(connection));
-        assert!(scope(&db, "personal", "conversation").is_err());
-        assert!(scope(&db, "work", "conversation").is_err());
+        assert!(scope(
+            &db,
+            "personal",
+            "conversation",
+            Path::new("/tmp/workbench-test-data")
+        )
+        .is_err());
+        assert!(scope(
+            &db,
+            "work",
+            "conversation",
+            Path::new("/tmp/workbench-test-data")
+        )
+        .is_err());
     }
 }

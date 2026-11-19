@@ -5,6 +5,7 @@ mod browser;
 mod desktop;
 mod i18n;
 mod openai;
+mod project_instructions;
 mod settings;
 mod terminal;
 mod tools;
@@ -308,6 +309,7 @@ fn app_commands(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
         let handler: Box<dyn Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync> =
             Box::new(tauri::generate_handler![
                 load_workspace,
+                project_instructions::project_agents,
                 settings::load_app_settings,
                 settings::save_app_settings,
                 save_workspace,

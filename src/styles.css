@@ -3350,3 +3350,24 @@ select:focus-visible {
     border-top: 1px solid var(--border);
   }
 }
+
+.project-instructions-settings {
+  border-block: 1px solid var(--border);
+  padding: 0 0 16px;
+  margin: 20px 0;
+}
+.project-instructions-settings > p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.project-instructions-settings summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.project-instructions-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow: auto;
+  font-family: "Source Code Pro", monospace;
+}

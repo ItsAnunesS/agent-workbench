@@ -43,6 +43,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     window.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" } },
       invoke: async (command, args = {}) => {
+        if (command === "project_agents") return { path: null, content: null };
         if (command === "terminal_preferences")
           return {
             global: { executable: "/bin/bash", args: [] },

@@ -1,6 +1,7 @@
 import { GlobalInstructionsSettings } from "./components/GlobalInstructionsSettings";
 import { InteractiveBrandMark } from "./components/InteractiveBrandMark";
 import { ToolPanel } from "./components/ToolPanel";
+import { ProjectInstructionsSettings } from "./components/ProjectInstructionsSettings";
 import { TerminalSettings } from "./components/TerminalSettings";
 import { UsageButton, UsagePanel } from "./components/UsagePanel";
 import { useUsage } from "./usage";
@@ -1704,7 +1705,9 @@ export default function App() {
                   <span className="subtle">
                     {mode === "worker"
                       ? t("Only this folder is available during execution.")
-                      : t("Chat cannot access local files.")}
+                      : t(
+                          "Chat receives root AGENTS.md instructions but cannot browse other local files.",
+                        )}
                   </span>
                 </div>
               )}
@@ -2001,6 +2004,16 @@ export default function App() {
                       >
                         {t("Set folder")}
                       </button>
+                      <ProjectInstructionsSettings
+                        key={JSON.stringify([
+                          environmentId,
+                          project.id,
+                          project.path,
+                        ])}
+                        environmentId={environmentId}
+                        projectId={project.id}
+                        projectPath={project.path}
+                      />
                       <h4>{t("Project memory")}</h4>
                       <p className="memory-preview">
                         {project.memory ||
