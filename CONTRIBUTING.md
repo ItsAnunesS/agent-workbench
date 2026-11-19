@@ -9,6 +9,7 @@ Small changes, clear commits and checks that exercise the changed behavior. This
 - The maintainer may push directly to either branch. CI still runs.
 - Merge tested changes from `dev` into `release`.
 - After a direct fix or version bump on `release`, merge it back into `dev`. Do not force-push either shared branch.
+- Before committing or pushing, update the affected documentation and `CHANGELOG.md` to reflect the final change. Keep the English and pt-BR READMEs synchronized when user-facing behavior changes, and include documentation and changelog updates in the same commit as the behavior they describe.
 
 ## Commits and PRs
 

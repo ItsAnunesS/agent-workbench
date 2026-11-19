@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Contribution guidance requiring documentation and changelog updates before committing or pushing changes.
 - Inline assistant/Worker activity with public progress summaries and persisted elapsed time.
 - Project accordions, separate unassigned conversations, and context actions for renaming, pinning, duplication, moving, archiving, restoring and deletion.
 - Ask for approval and model-reviewed low-risk automatic approval modes, retaining Docker isolation and manual fallback.
