@@ -125,7 +125,6 @@
   "Context copied from a Chat in this environment. The original conversation was preserved.": "Contexto copiado de um Chat deste ambiente. A conversa original foi preservada.",
   "Responding...": "A responder...",
   "Message saved. Connect this environment's account to receive responses.": "Mensagem guardada. Liga a conta deste ambiente para receber respostas.",
-  "Request a response from OpenAI": "Pedir resposta à OpenAI",
   "Select project": "Selecionar projeto",
   "Run task": "Executar tarefa",
   "Create a task from this conversation": "Criar tarefa a partir desta conversa",

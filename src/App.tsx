@@ -1198,19 +1198,6 @@ export default function App() {
                       </span>
                     </div>
                   )}
-                  {mode === "chat" &&
-                    !scopeArchived &&
-                    openai.account?.eligible &&
-                    openai.model &&
-                    !activeRequest && (
-                      <button
-                        className="text-button"
-                        onClick={() => requestResponse(conversation)}
-                      >
-                        {t("Request a response from OpenAI")}
-                        <ArrowRight size={14} />
-                      </button>
-                    )}
                   {mode === "worker" && !scopeArchived && (
                     <>
                       {!project && (

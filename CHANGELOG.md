@@ -4,6 +4,10 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+### Changed
+
+- Removed the separate request-response link below Chat messages; sending a message through the composer remains the way to request a response.
+
 ### Added
 
 - Usage panel with persisted, account/environment-scoped token counts from Chat, Worker and automatic approval reviews, daily history and recent reported responses. Missing counts remain unknown; cached/reasoning subsets are not double-counted. Plan allowance and credits link to the official ChatGPT usage page because the current connection does not expose those values.

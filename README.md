@@ -38,7 +38,7 @@ Built with **Tauri, React, TypeScript and Rust**. Linux AppImage is the current 
 
 - Separate environments for personal work, clients or teams, with one OpenAI account per environment.
 - Independent Chat and Worker histories. Context crosses modes only through an explicit handoff.
-- Streaming Chat responses, model selection and cancellation using an eligible ChatGPT subscription.
+- Streaming Chat responses, model selection and cancellation using an eligible ChatGPT subscription. Send messages through the composer to request responses.
 - Codex Worker with inline command activity, public progress summaries, file diffs, persistent elapsed time, approvals and cancellation.
 - Expandable projects containing their chats/tasks, with unassigned conversations listed separately. Right-click or use the action menu to rename, pin, duplicate, move, archive, restore or delete items.
 - One Docker container per task. Only the selected project folder is mounted; commands have no external network access. OpenAI credentials remain in the host app.
