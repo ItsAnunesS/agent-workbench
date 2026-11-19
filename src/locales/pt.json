@@ -485,5 +485,10 @@
   "Choose a name that is easy to find.": "Escolhe um nome fácil de encontrar.",
   "Could not remove task history.": "Não foi possível remover o histórico de tarefas.",
   "Restore project": "Restaurar projeto",
-  "Automatic review is unavailable. Please approve this action manually.": "A revisão automática está indisponível. Aprova esta ação manualmente."
+  "Automatic review is unavailable. Please approve this action manually.": "A revisão automática está indisponível. Aprova esta ação manualmente.",
+  "Global settings": "Definições globais",
+  "Workspace settings": "Definições do workspace",
+  "Settings for {name}": "Definições de {name}",
+  "Preferences for the entire app, shared by all workspaces.": "Preferências de toda a aplicação, partilhadas por todos os workspaces.",
+  "Edit workspace instructions": "Editar instruções do workspace"
 }

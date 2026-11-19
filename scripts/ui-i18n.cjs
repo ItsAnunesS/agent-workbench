@@ -71,13 +71,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   assert.equal(await page.locator("html").getAttribute("lang"), "en");
   const draft = "Texto do utilizador <script> sem tradução";
   await page.getByRole("textbox", { name: "Message", exact: true }).fill(draft);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Global settings", exact: true })
+    .click();
   await page
     .getByText("Could not check system integration.", { exact: true })
     .waitFor();
   await page.getByRole("combobox", { name: /Language/ }).selectOption("pt");
   await page
-    .getByRole("heading", { name: "A tua conta, neste ambiente", exact: true })
+    .getByRole("heading", { name: "Definições globais", exact: true })
     .waitFor();
   await page
     .getByText("Não foi possível consultar a integração do sistema.", {
@@ -104,14 +106,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("button", { name: "Guardar mensagem localmente", exact: true })
     .click();
   await page.locator("article p").filter({ hasText: draft }).waitFor();
-  await page.getByRole("button", { name: "Definições", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Definições globais", exact: true })
+    .click();
   await page.getByRole("combobox", { name: /Idioma/ }).selectOption("en");
   await page.getByText("Invalid environment.", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.locator("article p").filter({ hasText: draft }).waitFor();
   await page.reload();
   assert.equal(await page.locator("html").getAttribute("lang"), "en");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Global settings", exact: true })
+    .click();
   await page.getByRole("combobox", { name: /Language/ }).selectOption("pt");
   await page.reload();
   await page
@@ -120,7 +126,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   assert.equal(await page.locator("html").getAttribute("lang"), "pt");
   const calls = await page.evaluate(() => window.apiCalls);
   assert.ok(calls.length > 0 && calls.every((call) => call.locale === "pt"));
-  await page.getByRole("button", { name: "Definições", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Definições globais", exact: true })
+    .click();
   await page.getByRole("combobox", { name: /Idioma/ }).selectOption("en");
   await page.screenshot({
     path: "/workspace/artifacts/i18n-settings-en.png",
@@ -143,13 +151,23 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       invoke: async (command) => {
         if (command === "load_workspace") throw "Local data unavailable.";
         if (command === "openai_accounts") return [];
-        if (command === "worker_runtime") return { available: false, ready: false, message: "Start Docker and check again." };
+        if (command === "worker_runtime")
+          return {
+            available: false,
+            ready: false,
+            message: "Start Docker and check again.",
+          };
         return false;
       },
     };
   });
   await failedStartup.goto("http://127.0.0.1:1420");
-  await failedStartup.getByText("Não foi possível abrir os dados locais. Reinicia a aplicação.", { exact: true }).waitFor();
+  await failedStartup
+    .getByText(
+      "Não foi possível abrir os dados locais. Reinicia a aplicação.",
+      { exact: true },
+    )
+    .waitFor();
   assert.equal(await failedStartup.locator("html").getAttribute("lang"), "pt");
   assert.deepEqual(errors, []);
   console.log(

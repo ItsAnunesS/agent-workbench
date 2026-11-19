@@ -62,14 +62,16 @@ O Worker altera a pasta do projeto diretamente. Cancelar uma tarefa não desfaz 
    "./Agent-Workbench_<versão>_amd64.AppImage"
    ```
 
-3. Nas definições do app, escolha um ambiente e conecte sua conta OpenAI.
-4. Para usar o Worker, inicie o Docker, prepare o runtime nas definições e selecione a pasta do projeto e o modelo.
+3. Escolha um ambiente e abra **Workspace settings** pelo cartão OpenAI no rodapé da barra lateral para conectar a conta desse workspace.
+4. Para usar o Worker, inicie o Docker, prepare o runtime nas definições globais e selecione a pasta do projeto e o modelo.
 
 O acesso pela assinatura depende da elegibilidade da conta e dos modelos liberados pela OpenAI. O plano ChatGPT não garante acesso ilimitado. O histórico pertence ao app; conversas oficiais do ChatGPT e do Codex não são importadas.
 
-No Linux, o AppImage registra o atalho e o logo no menu de aplicativos do usuário. Se mover o arquivo, abra-o uma vez no novo local. A opção **Reparar integração**, nas definições, atualiza o atalho.
+No Linux, o AppImage registra o atalho e o logo no menu de aplicativos do usuário. Se mover o arquivo, abra-o uma vez no novo local. A opção **Reparar integração**, nas definições globais, atualiza o atalho.
 
-Use **Settings > Language** para mudar o idioma. Os nomes dos ambientes existentes, conversas, memória dos projetos, respostas dos modelos, código e saída dos comandos são preservados como foram escritos. Novas instalações criam os ambientes padrão como **Personal** e **Work**.
+O ícone inferior da barra de ambientes abre as **definições globais**, com idioma, aparência, integração desktop, runtime compartilhado do Worker e informações do app. O cartão OpenAI abre as **definições do workspace**, com a conta e as instruções do ambiente selecionado, mesmo quando um projeto está aberto.
+
+Use **Global settings > Language** para mudar o idioma. Os nomes dos ambientes existentes, conversas, memória dos projetos, respostas dos modelos, código e saída dos comandos são preservados como foram escritos. Novas instalações criam os ambientes padrão como **Personal** e **Work**.
 
 Os novos AppImages incluem a fonte padrão de atualização para a versão estável mais recente no GitHub Releases. Importe o AppImage no Gear Lever ou em outro gerenciador compatível para detectar e instalar atualizações sem configurar a URL do repositório. A verificação e a instalação automática dependem das configurações do gerenciador. AppImages antigos sem esses metadados precisam ser substituídos manualmente uma vez. O AppImageUpdate também pode usar o arquivo `.zsync` publicado junto de cada versão; para executar o app, baixe o `.AppImage`.
 

@@ -12,7 +12,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   page.on("pageerror", (error) => errors.push(error.message));
   const theme = () => page.locator("html").getAttribute("data-theme");
   const settings = async () =>
-    page.getByRole("button", { name: "Settings", exact: true }).click();
+    page.getByRole("button", { name: "Global settings", exact: true }).click();
   await page.goto("http://127.0.0.1:1420");
   await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   assert.equal(await theme(), "dark");

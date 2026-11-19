@@ -2620,3 +2620,13 @@ select:focus-visible {
 .assistant-message[data-status="completed"] .message-meta {
   display: none;
 }
+
+.settings-workspace-instructions {
+  padding: 16px 0 20px;
+  border-top: 1px solid var(--border);
+}
+.settings-workspace-instructions h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}

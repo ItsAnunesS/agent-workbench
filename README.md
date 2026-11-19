@@ -44,7 +44,7 @@ Built with **Tauri, React, TypeScript and Rust**. Linux AppImage is the current 
 - One Docker container per task. Only the selected project folder is mounted; commands have no external network access. OpenAI credentials remain in the host app.
 - Local SQLite storage, environment instructions and project memory.
 - Dark, light and system themes; integrated window controls; native desktop icons.
-- English by default, with a persistent English/Portuguese language selector in Settings. Interface text, native API errors, Worker status messages and the login callback page follow the selected language.
+- English by default, with a persistent English/Portuguese language selector in Global settings. Interface text, native API errors, Worker status messages and the login callback page follow the selected language.
 
 Worker offers **Ask for approval** (the default) and **Approve for me** in the composer. Automatic review uses the selected model to approve only actions assessed as low risk. Potentially unsafe or inconclusive actions, and review failures, fall back to manual approval. Both modes keep the same Docker, project-folder and network restrictions. The setting applies to the next task and is saved on this device.
 
@@ -62,14 +62,16 @@ Worker edits the project folder directly. Cancelling a task does not revert edit
    "./Agent-Workbench_<version>_amd64.AppImage"
    ```
 
-3. Open **Settings**, choose an environment and connect its OpenAI account.
-4. To use Worker, start Docker, prepare the runtime in Settings, then select a project folder and a model.
+3. Choose an environment, then open **Workspace settings** using the OpenAI card at the bottom of its sidebar to connect its account.
+4. To use Worker, start Docker, prepare the runtime in **Global settings**, then select a project folder and a model.
 
 Subscription access depends on account eligibility and the models granted by OpenAI. A ChatGPT plan does not imply unrestricted access. The app keeps its own conversation history; it does not import the official ChatGPT or Codex history.
 
-On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Settings > Repair integration** refreshes the launcher.
+On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Global settings > Repair integration** refreshes the launcher.
 
-Choose **Settings > Language** to change the app language. Existing environment names, conversations, project memory, model responses, code and command output are preserved as written. New installations create the default environments as **Personal** and **Work**.
+The bottom icon in the environment rail opens **Global settings** for language, appearance, desktop integration, the shared Worker runtime and app information. The OpenAI card opens **Workspace settings** for the selected environment's account and instructions, including when a project is selected.
+
+Choose **Global settings > Language** to change the app language. Existing environment names, conversations, project memory, model responses, code and command output are preserved as written. New installations create the default environments as **Personal** and **Work**.
 
 New AppImages include the standard update source for the latest stable GitHub Release. Import the AppImage into Gear Lever or another compatible manager to detect and install updates without entering a repository URL. Update checks and automatic installation depend on the manager's settings. Older AppImages without this metadata need a one-time manual replacement. AppImageUpdate is also supported through the `.zsync` file published alongside each release; download the `.AppImage` to run the app.
 

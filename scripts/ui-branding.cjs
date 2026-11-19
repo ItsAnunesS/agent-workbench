@@ -38,7 +38,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("button", { name: "Environment Personal", exact: true })
     .click();
   assert.equal(await draft.inputValue(), "Rascunho do ambiente pessoal");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Global settings", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
   assert.equal(
@@ -64,7 +64,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   await dialog.waitFor({ state: "hidden" });
   assert.equal(
     await page
-      .getByRole("button", { name: "Settings", exact: true })
+      .getByRole("button", { name: "Global settings", exact: true })
       .evaluate((button) => document.activeElement === button),
     true,
   );

@@ -70,7 +70,14 @@ import {
 } from "./workspace";
 
 type Dialog =
-  "projectPath" | "environment" | "project" | "memory" | "settings" | null;
+  | "projectPath"
+  | "environment"
+  | "project"
+  | "memory"
+  | "environmentInstructions"
+  | "settings"
+  | "globalSettings"
+  | null;
 const previewWorkspace: Workspace = {
   version: 1,
   environments: [
@@ -540,11 +547,13 @@ export default function App() {
     setFormPath(value === "projectPath" ? project?.path || "" : "");
     setFormColor("green");
     setFormText(
-      value === "memory"
-        ? project
-          ? project.memory
-          : environment.instructions
-        : "",
+      value === "environmentInstructions"
+        ? environment.instructions
+        : value === "memory"
+          ? project
+            ? project.memory
+            : environment.instructions
+          : "",
     );
     setDialog(value);
   }
@@ -584,9 +593,9 @@ export default function App() {
         ],
       });
       changeScope(environmentId, id);
-    } else if (dialog === "memory") {
+    } else if (dialog === "memory" || dialog === "environmentInstructions") {
       commit(
-        project
+        project && dialog !== "environmentInstructions"
           ? {
               ...workspace!,
               projects: workspace!.projects.map((item) =>
@@ -761,7 +770,7 @@ export default function App() {
           className="brand-mark"
           title="Agent Workbench"
           aria-label={t("About Agent Workbench")}
-          onClick={() => openDialog("settings")}
+          onClick={() => openDialog("globalSettings")}
         >
           <BrandMark />
         </button>
@@ -792,9 +801,9 @@ export default function App() {
           <span className="local-indicator" title={t("Local data")} />
           <button
             className="avatar"
-            aria-label={t("Settings")}
-            title={t("Settings")}
-            onClick={() => openDialog("settings")}
+            aria-label={t("Global settings")}
+            title={t("Global settings")}
+            onClick={() => openDialog("globalSettings")}
           >
             <Settings2 size={18} />
           </button>
@@ -804,6 +813,7 @@ export default function App() {
       <aside className="sidebar">
         <button
           className="environment-heading"
+          aria-label={t("Settings for {name}", { name: environment.name })}
           onClick={() => openDialog("settings")}
         >
           <span>
@@ -830,6 +840,8 @@ export default function App() {
         </div>
         <button
           className="sidebar-footer"
+          aria-label={t("Workspace settings")}
+          title={t("Workspace settings")}
           onClick={() => openDialog("settings")}
         >
           <div className="provider-icon">
@@ -1506,7 +1518,11 @@ export default function App() {
                       <button
                         type="button"
                         className="agent-placeholder"
-                        onClick={() => openDialog("settings")}
+                        onClick={() =>
+                          openDialog(
+                            mode === "worker" ? "globalSettings" : "settings",
+                          )
+                        }
                       >
                         <Bot size={14} />
                         {mode === "chat"
@@ -1681,7 +1697,7 @@ export default function App() {
                     "Chat and Worker have separate histories. Sharing context is always your choice.",
                   )}
                 </p>
-                <button onClick={() => openDialog("settings")}>
+                <button onClick={() => openDialog("globalSettings")}>
                   <CircleHelp size={13} />
                   {t("About this version")}
                 </button>
@@ -1702,7 +1718,7 @@ export default function App() {
           }}
         >
           <section
-            className={`modal ${dialog === "settings" ? "settings-modal" : ""}`}
+            className={`modal ${["settings", "globalSettings"].includes(dialog) ? "settings-modal" : ""}`}
             ref={modalRef}
             role="dialog"
             aria-modal="true"
@@ -1715,7 +1731,7 @@ export default function App() {
             >
               <X size={19} />
             </button>
-            {dialog === "settings" ? (
+            {["settings", "globalSettings"].includes(dialog) ? (
               <BrandWordmark
                 className="settings-wordmark"
                 theme={appearance.theme}
@@ -1740,13 +1756,58 @@ export default function App() {
                   ? t("Add project")
                   : dialog === "projectPath"
                     ? t("Project folder")
-                    : dialog === "memory"
-                      ? project
+                    : dialog === "memory" ||
+                        dialog === "environmentInstructions"
+                      ? project && dialog === "memory"
                         ? t("Project memory")
                         : t("Environment instructions")
-                      : t("Your account in this environment")}
+                      : t(
+                          dialog === "globalSettings"
+                            ? "Global settings"
+                            : "Workspace settings",
+                        )}
             </h2>
-            {dialog === "settings" ? (
+            {dialog === "globalSettings" ? (
+              <>
+                <p className="modal-description">
+                  {t(
+                    "Preferences for the entire app, shared by all workspaces.",
+                  )}
+                </p>
+                <LanguageSwitcher />
+                <ThemeSwitcher
+                  value={appearance.preference}
+                  onChange={appearance.selectTheme}
+                />
+                <DesktopIntegration />
+                <WorkerSetup worker={worker} />
+                {worker.issue && (
+                  <p className="account-issue" role="alert">
+                    {localizeMessage(worker.issue)}
+                  </p>
+                )}
+                <details className="settings-details">
+                  <summary>{t("Privacy and about this version")}</summary>
+                  <p>
+                    {t(
+                      "Credentials are protected on your computer. History is local and separated by environment and mode. Chat receives the current conversation and the context saved in this workspace.",
+                    )}
+                  </p>
+                  <p>
+                    {t(
+                      "Agent Workbench {version} · Chat and Codex Worker with local history. Worker modifies files directly in the selected folder. Stopping a task does not undo changes already made.",
+                      { version: appVersion },
+                    )}
+                  </p>
+                </details>
+                <button
+                  className="primary-button full-width"
+                  onClick={() => setDialog(null)}
+                >
+                  {t("Done")}
+                </button>
+              </>
+            ) : dialog === "settings" ? (
               <>
                 <p className="modal-description">
                   <span className={`settings-environment ${environment.color}`}>
@@ -1754,11 +1815,6 @@ export default function App() {
                   </span>{" "}
                   {t("Other environments keep their own accounts.")}
                 </p>
-                <LanguageSwitcher />
-                <ThemeSwitcher
-                  value={appearance.preference}
-                  onChange={appearance.selectTheme}
-                />
                 <div
                   className={`settings-account-card ${openai.account?.eligible ? "connected" : ""}`}
                 >
@@ -1843,27 +1899,22 @@ export default function App() {
                     )}
                   </p>
                 </div>
-                <DesktopIntegration />
-                <WorkerSetup worker={worker} />
-                {worker.issue && (
-                  <p className="account-issue" role="alert">
-                    {localizeMessage(worker.issue)}
+                <div className="settings-workspace-instructions">
+                  <h3>{t("Environment instructions")}</h3>
+                  <p className="memory-preview">
+                    {environment.instructions ||
+                      t(
+                        "Add preferences and decisions to keep in this workspace.",
+                      )}
                   </p>
-                )}
-                <details className="settings-details">
-                  <summary>{t("Privacy and about this version")}</summary>
-                  <p>
-                    {t(
-                      "Credentials are protected on your computer. History is local and separated by environment and mode. Chat receives the current conversation and the context saved in this workspace.",
-                    )}
-                  </p>
-                  <p>
-                    {t(
-                      "Agent Workbench {version} · Chat and Codex Worker with local history. Worker modifies files directly in the selected folder. Stopping a task does not undo changes already made.",
-                      { version: appVersion },
-                    )}
-                  </p>
-                </details>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => openDialog("environmentInstructions")}
+                  >
+                    {t("Edit workspace instructions")}
+                  </button>
+                </div>
                 <button
                   className="primary-button full-width"
                   onClick={() => setDialog(null)}
@@ -1952,9 +2003,12 @@ export default function App() {
                     </small>
                   </label>
                 )}
-                {dialog === "memory" && (
+                {(dialog === "memory" ||
+                  dialog === "environmentInstructions") && (
                   <label className="field">
-                    {project ? project.name : environment.name}
+                    {project && dialog !== "environmentInstructions"
+                      ? project.name
+                      : environment.name}
                     <textarea
                       autoFocus
                       rows={10}
@@ -1981,7 +2035,7 @@ export default function App() {
                     {t("Cancel")}
                   </button>
                   <button className="primary-button" type="submit">
-                    {dialog === "memory"
+                    {dialog === "memory" || dialog === "environmentInstructions"
                       ? t("Save context")
                       : dialog === "projectPath"
                         ? t("Save folder")

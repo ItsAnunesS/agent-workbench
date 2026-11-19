@@ -129,7 +129,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Global settings", exact: true }).click();
   await page.getByText("Could not check system integration.", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Repair integration", exact: true }).click();
   await page.getByText("The logo and launcher are registered in this user's application menu.", { exact: true }).waitFor();

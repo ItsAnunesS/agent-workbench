@@ -485,5 +485,10 @@
   "Choose a name that is easy to find.": "Choose a name that is easy to find.",
   "Could not remove task history.": "Could not remove task history.",
   "Restore project": "Restore project",
-  "Automatic review is unavailable. Please approve this action manually.": "Automatic review is unavailable. Please approve this action manually."
+  "Automatic review is unavailable. Please approve this action manually.": "Automatic review is unavailable. Please approve this action manually.",
+  "Global settings": "Global settings",
+  "Workspace settings": "Workspace settings",
+  "Settings for {name}": "Settings for {name}",
+  "Preferences for the entire app, shared by all workspaces.": "Preferences for the entire app, shared by all workspaces.",
+  "Edit workspace instructions": "Edit workspace instructions"
 }

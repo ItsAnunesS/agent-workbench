@@ -140,7 +140,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     };
   });
   await page.goto("http://127.0.0.1:1420");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Workspace settings", exact: true }).click();
   await page
     .getByRole("button", { name: "Continue with ChatGPT", exact: true })
     .click();
@@ -203,7 +203,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .click();
   assert.equal(await page.getByRole("combobox", { name: "Model" }).count(), 0);
   assert.equal(await page.locator("article").count(), 0);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Workspace settings", exact: true }).click();
   await page
     .getByRole("button", { name: "Continue with ChatGPT", exact: true })
     .click();

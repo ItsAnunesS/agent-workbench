@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Separate global and workspace settings: application preferences and shared runtime in the rail settings button, with account and environment instructions in the OpenAI workspace card.
 - Contribution guidance requiring documentation and changelog updates before committing or pushing changes.
 - Inline assistant/Worker activity with public progress summaries and persisted elapsed time.
 - Project accordions, separate unassigned conversations, and context actions for renaming, pinning, duplication, moving, archiving, restoring and deletion.
