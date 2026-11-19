@@ -641,5 +641,7 @@
   "Recorded since {date}": "Registado desde {date}",
   "Older, interrupted or unreported requests may be missing. Token counts are not a bill or a quota estimate.": "Pedidos anteriores, interrompidos ou não reportados podem estar em falta. As contagens de tokens não são uma fatura nem uma estimativa do limite disponível.",
   "Could not save token usage.": "Não foi possível guardar a utilização de tokens.",
-  "Could not read token usage.": "Não foi possível consultar a utilização de tokens."
+  "Could not read token usage.": "Não foi possível consultar a utilização de tokens.",
+  "Rename conversation": "Renomear conversa",
+  "Rename task": "Renomear tarefa"
 }

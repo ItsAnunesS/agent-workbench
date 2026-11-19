@@ -641,5 +641,7 @@
   "Recorded since {date}": "Recorded since {date}",
   "Older, interrupted or unreported requests may be missing. Token counts are not a bill or a quota estimate.": "Older, interrupted or unreported requests may be missing. Token counts are not a bill or a quota estimate.",
   "Could not save token usage.": "Could not save token usage.",
-  "Could not read token usage.": "Could not read token usage."
+  "Could not read token usage.": "Could not read token usage.",
+  "Rename conversation": "Rename conversation",
+  "Rename task": "Rename task"
 }

@@ -69,6 +69,8 @@ struct Conversation {
     project_id: Option<String>,
     mode: String,
     title: String,
+    #[serde(default)]
+    title_edited: bool,
     messages: Vec<Message>,
     created_at: String,
     source_id: Option<String>,
@@ -472,6 +474,7 @@ mod tests {
             project_id: None,
             mode: mode.into(),
             title: "Test".into(),
+            title_edited: false,
             messages: vec![],
             created_at: "2026-11-18".into(),
             source_id: None,
@@ -534,6 +537,7 @@ mod tests {
         workspace
             .conversations
             .push(conversation("personal", "chat"));
+        workspace.conversations[0].title_edited = true;
         let data = serde_json::to_string(&workspace).unwrap();
         connection
             .execute(
@@ -549,6 +553,14 @@ mod tests {
         let restored: Workspace = serde_json::from_str(&stored).unwrap();
         assert_eq!(restored.environments[0].instructions, "Private preferences");
         assert_eq!(restored.conversations[0].mode, "chat");
+        assert!(restored.conversations[0].title_edited);
+        let mut legacy = serde_json::to_value(&restored.conversations[0]).unwrap();
+        legacy.as_object_mut().unwrap().remove("titleEdited");
+        assert!(
+            !serde_json::from_value::<Conversation>(legacy)
+                .unwrap()
+                .title_edited
+        );
     }
 
     #[test]

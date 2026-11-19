@@ -33,6 +33,7 @@ import {
   LockKeyhole,
   PanelRightClose,
   PanelRightOpen,
+  Pencil,
   Plus,
   Search,
   Settings2,
@@ -503,9 +504,10 @@ export default function App() {
       conversation || createConversation(environmentId, mode, projectId);
     const updated: Conversation = {
       ...current,
-      title: current.messages.length
-        ? current.title
-        : Array.from(content).slice(0, 80).join(""),
+      title:
+        current.messages.length || current.titleEdited
+          ? current.title
+          : Array.from(content).slice(0, 80).join(""),
       messages: [
         ...current.messages,
         {
@@ -744,7 +746,9 @@ export default function App() {
           : {
               ...latest,
               conversations: latest.conversations.map((item) =>
-                item.id === target.id ? { ...item, title: value.trim() } : item,
+                item.id === target.id
+                  ? { ...item, title: value.trim(), titleEdited: true }
+                  : item,
               ),
             };
     } else {
@@ -1071,7 +1075,35 @@ export default function App() {
                     <span>
                       {mode === "chat" ? t("CONVERSATION") : t("TASK")}
                     </span>
-                    <h1>{conversation.title}</h1>
+                    <div className="conversation-title-row">
+                      <h1>{conversation.title}</h1>
+                      <button
+                        type="button"
+                        className="icon-button conversation-rename"
+                        aria-label={t(
+                          mode === "chat"
+                            ? "Rename conversation"
+                            : "Rename task",
+                        )}
+                        title={t(
+                          mode === "chat"
+                            ? "Rename conversation"
+                            : "Rename task",
+                        )}
+                        disabled={targetBusy({
+                          type: "conversation",
+                          id: conversation.id,
+                        })}
+                        onClick={() =>
+                          handleSidebarAction(
+                            { type: "conversation", id: conversation.id },
+                            "rename",
+                          )
+                        }
+                      >
+                        <Pencil size={16} />
+                      </button>
+                    </div>
                     {conversation.sourceId && (
                       <p>
                         {t(

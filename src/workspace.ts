@@ -32,6 +32,7 @@ export interface Conversation {
   projectId: string | null;
   mode: Mode;
   title: string;
+  titleEdited?: boolean;
   messages: Message[];
   createdAt: string;
   sourceId: string | null;

@@ -10,6 +10,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Visible rename action beside conversation and task titles, sharing the existing sidebar rename dialog and persisted workspace names. Custom names are preserved when sending the first message.
 - Usage panel with persisted, account/environment-scoped token counts from Chat, Worker and automatic approval reviews, daily history and recent reported responses. Missing counts remain unknown; cached/reasoning subsets are not double-counted. Plan allowance and credits link to the official ChatGPT usage page because the current connection does not expose those values.
 
 ## [0.8.0] - 2026-11-19

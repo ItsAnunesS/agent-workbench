@@ -829,6 +829,17 @@ button:disabled:hover {
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+.conversation-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.conversation-title-row h1 {
+  min-width: 0;
+}
+.conversation-rename {
+  flex-shrink: 0;
+}
 .conversation-title > p {
   font-size: 12px;
   color: var(--text-muted);

@@ -38,7 +38,7 @@ Feito com **Tauri, React, TypeScript e Rust**. A distribuição atual é o AppIm
 
 - Ambientes separados por contexto, com uma conta OpenAI por ambiente.
 - Históricos independentes de Chat e Worker. O contexto só passa de um modo para outro por uma ação explícita.
-- Chat com streaming, escolha de modelo e cancelamento, usando uma assinatura ChatGPT elegível. Envie mensagens pelo campo de composição para solicitar respostas.
+- Chat com streaming, escolha de modelo e cancelamento, usando uma assinatura ChatGPT elegível. Envie mensagens pelo campo de composição para solicitar respostas. Renomeie conversas e tarefas pelo lápis ao lado do título ou pela opção **Renomear** no menu da barra lateral. Os nomes escolhidos são mantidos após a primeira mensagem e ao reabrir o app.
 - Codex Worker com atividade dos comandos junto da conversa, resumos públicos de progresso, diffs, tempo de execução persistente, aprovações e cancelamento.
 - Projetos expansíveis com suas conversas/tarefas, separados das conversas sem projeto. Use o botão direito ou o menu de ações para renomear, fixar, duplicar, mover, arquivar, restaurar ou remover itens.
 - Um container Docker por tarefa. Apenas a pasta escolhida fica montada; os comandos não têm acesso externo à rede. As credenciais OpenAI permanecem no app, fora do container.

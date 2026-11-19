@@ -63,6 +63,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       conversations: [
         chat("alpha-chat", "Alpha chat", "alpha"),
         chat("standalone", "Standalone chat", null),
+        { ...chat("empty", "Empty conversation", null), messages: [] },
         chat("alpha-task", "Alpha task", "alpha", "worker"),
       ],
     };
@@ -96,6 +97,24 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await button(item).click({ button: "right" });
     await page.getByRole("menuitem", { name, exact: true }).click();
   };
+  await button("Empty conversation").waitFor();
+  await action("Rename", "Empty conversation");
+  await page
+    .getByRole("dialog")
+    .getByRole("textbox")
+    .fill("Planned conversation");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
+  await button("Planned conversation").click();
+  await page
+    .getByRole("textbox", { name: "Message", exact: true })
+    .fill("First message preserves my chosen title");
+  await button("Save message locally").click();
+  await page
+    .getByRole("heading", { name: "Planned conversation", exact: true })
+    .waitFor();
   await button("Alpha").waitFor();
   assert.equal(await button("Alpha").getAttribute("aria-expanded"), "false");
   assert.equal(await button("Alpha chat").count(), 0);
@@ -129,13 +148,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     path: "/workspace/artifacts/chat-design-dark.png",
     fullPage: true,
   });
-  await action("Rename", "Alpha chat");
+  await button("Rename conversation").click();
+  await page.getByRole("dialog").getByRole("textbox").fill("Discarded name");
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("heading", { name: "Alpha chat", exact: true })
+    .waitFor();
+  await button("Rename conversation").click();
   await page.getByRole("dialog").getByRole("textbox").fill("Renamed chat");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Save", exact: true })
     .click();
   await button("Renamed chat").waitFor();
+  await page
+    .getByRole("heading", { name: "Renamed chat", exact: true })
+    .waitFor();
   await action("Pin", "Renamed chat");
   await action("Move to project", "Renamed chat");
   await page.getByRole("dialog").getByRole("combobox").selectOption("beta");
@@ -194,6 +222,16 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("button", { name: "Alpha task", exact: true })
     .waitFor();
   await button("Alpha task").click();
+  await button("Rename task").click();
+  await page.getByRole("dialog").getByRole("textbox").fill("Renamed task");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
+  await button("Renamed task").waitFor();
+  await page
+    .getByRole("heading", { name: "Renamed task", exact: true })
+    .waitFor();
   await page
     .getByRole("combobox", { name: "Approval mode", exact: true })
     .selectOption("auto");
@@ -203,7 +241,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   await page.reload();
   await button("Worker").click();
-  await button("Alpha task").click();
+  await button("Renamed task").click();
+  await page
+    .getByRole("heading", { name: "Renamed task", exact: true })
+    .waitFor();
   assert.equal(
     await page
       .getByRole("combobox", { name: "Approval mode", exact: true })
@@ -212,6 +253,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("design-workspace")),
+  );
+  assert.equal(
+    stored.conversations.find((item) => item.id === "alpha-chat").title,
+    "Renamed chat",
+  );
+  assert.equal(
+    stored.conversations.find((item) => item.id === "alpha-task").title,
+    "Renamed task",
   );
   assert.equal(
     stored.conversations.find((item) => item.id === "alpha-chat").projectId,
@@ -234,7 +283,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Chat design UI passed: accordion nesting, standalone lists, elapsed time, context actions, pinning, moving, archive/restore, project removal, persisted approval mode and responsive layout.",
+    "Chat design UI passed: accordion nesting, standalone lists, elapsed time, context actions, pinning, moving, archive/restore, project removal, persisted titles (including renamed empty chats), title actions, approval mode and responsive layout.",
   );
   await browser.close();
 })().catch((error) => {
