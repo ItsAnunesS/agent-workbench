@@ -3371,3 +3371,25 @@ select:focus-visible {
   overflow: auto;
   font-family: "Source Code Pro", monospace;
 }
+
+.app-updates > div {
+  min-width: 0;
+  width: 100%;
+}
+.update-preference,
+.update-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.update-preference {
+  font-size: 12px;
+}
+.update-actions {
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.app-updates progress {
+  width: 100%;
+  accent-color: var(--purple);
+}

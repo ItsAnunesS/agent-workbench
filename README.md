@@ -92,6 +92,8 @@ Desktop tools require the native app. Reading project files in the panel does no
 
 Choose **Global settings > Language** to change the app language. Existing environment names, conversations, project memory, model responses, code and command output are preserved as written. New installations create the default environments as **Personal** and **Work**.
 
+The Linux x86_64 AppImage checks the latest stable GitHub Release on startup and every six hours. **Global settings > App updates** lets you disable automatic checks, check manually and choose **Download and install**. The app validates the release asset size, AppImage header and GitHub SHA-256 digest before replacing its AppImage atomically at the same path. Failed downloads leave the installed file untouched; updates require a writable application folder. Existing chats and Worker tasks keep running. Close and reopen the app when finished to use the new version. Older versions without the built-in updater need one manual upgrade.
+
 New AppImages include the standard update source for the latest stable GitHub Release. Import the AppImage into Gear Lever or another compatible manager to detect and install updates without entering a repository URL. Update checks and automatic installation depend on the manager's settings. Older AppImages without this metadata need a one-time manual replacement. AppImageUpdate is also supported through the `.zsync` file published alongside each release; download the `.AppImage` to run the app.
 
 ## Development

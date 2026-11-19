@@ -47,6 +47,8 @@ import {
 } from "lucide-react";
 import { useOpenAi, type ChatStreamEvent } from "./openai";
 import { DesktopIntegration } from "./components/DesktopIntegration";
+import { UpdateSettings } from "./components/UpdateSettings";
+import { useUpdates } from "./updates";
 import { WindowControls } from "./components/WindowControls";
 import { useTheme } from "./theme";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
@@ -100,6 +102,7 @@ const previewWorkspace: Workspace = {
 export default function App() {
   useLocale();
   const appearance = useTheme();
+  const updates = useUpdates();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [environmentId, setEnvironmentId] = useState("personal");
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -892,6 +895,11 @@ export default function App() {
             <strong>{mode === "chat" ? t("Chat") : t("Worker")}</strong>
           </div>
           <div className="topbar-actions">
+            {(updates.status?.version || updates.phase === "installed") && (
+              <button className="text-button" onClick={() => openDialog("globalSettings")}>
+                {updates.phase === "installed" ? t("Update installed") : t("Update available")}
+              </button>
+            )}
             <button
               className="icon-button theme-toggle"
               aria-label={
@@ -1851,6 +1859,7 @@ export default function App() {
                 <GlobalInstructionsSettings />
                 <TerminalSettings />
                 <DesktopIntegration />
+                <UpdateSettings updates={updates} />
                 <WorkerSetup worker={worker} />
                 {worker.issue && (
                   <p className="account-issue" role="alert">

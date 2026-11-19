@@ -9,6 +9,7 @@ mod project_instructions;
 mod settings;
 mod terminal;
 mod tools;
+mod updates;
 mod usage;
 mod worker;
 
@@ -315,6 +316,8 @@ fn app_commands(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
                 save_workspace,
                 desktop::desktop_integration_status,
                 desktop::desktop_integration_repair,
+                updates::app_update_check,
+                updates::app_update_install,
                 openai::openai_accounts,
                 openai::openai_login,
                 openai::openai_cancel_login,
@@ -348,6 +351,7 @@ fn main() {
     let desktop_integration = desktop::initialize();
     tauri::Builder::default()
         .manage(desktop_integration)
+        .manage(updates::Updater::default())
         .manage(browser::Browser::default())
         .manage(terminal::Terminals::default())
         .manage(usage::Tracker::default())

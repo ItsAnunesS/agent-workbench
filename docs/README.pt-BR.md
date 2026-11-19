@@ -92,6 +92,8 @@ As ferramentas locais exigem a aplicação desktop. Ler arquivos no painel não 
 
 Use **Global settings > Language** para mudar o idioma. Os nomes dos ambientes existentes, conversas, memória dos projetos, respostas dos modelos, código e saída dos comandos são preservados como foram escritos. Novas instalações criam os ambientes padrão como **Personal** e **Work**.
 
+O AppImage Linux x86_64 verifica a versão estável mais recente do GitHub ao iniciar e a cada seis horas. Em **Definições globais > Atualizações da aplicação**, pode desativar a verificação automática, procurar manualmente e escolher **Descarregar e instalar**. O app valida o tamanho, o cabeçalho AppImage e o SHA-256 fornecido pelo GitHub antes de substituir o AppImage atomicamente no mesmo caminho. Downloads com falha preservam o arquivo instalado; a pasta do aplicativo precisa permitir escrita. Conversas e tarefas do Worker continuam em execução. Feche e abra o app quando terminar para usar a nova versão. Versões antigas sem o atualizador integrado precisam de uma atualização manual inicial.
+
 Os novos AppImages incluem a fonte padrão de atualização para a versão estável mais recente no GitHub Releases. Importe o AppImage no Gear Lever ou em outro gerenciador compatível para detectar e instalar atualizações sem configurar a URL do repositório. A verificação e a instalação automática dependem das configurações do gerenciador. AppImages antigos sem esses metadados precisam ser substituídos manualmente uma vez. O AppImageUpdate também pode usar o arquivo `.zsync` publicado junto de cada versão; para executar o app, baixe o `.AppImage`.
 
 ## Desenvolvimento
