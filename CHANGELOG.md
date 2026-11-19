@@ -4,9 +4,15 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-19
+
 ### Changed
 
 - Reject dependency, configuration or source edits hidden inside a snapshot version patch before synchronizing it with newer commits.
+
+### Bug Fixes
+
+* **release:** validate snapshot manifest version patches ([91b541e](https://github.com/ItsAnunesS/agent-workbench/commit/91b541e8133e53db88c0e6a48b371b15af441278))
 
 ## [0.9.1] - 2026-11-19
 
