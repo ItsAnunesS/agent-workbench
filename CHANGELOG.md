@@ -4,9 +4,23 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-19
+
 ### Changed
 
 - Download and install newer stable GitHub releases automatically on startup by default, preserving existing opt-outs and manual controls. Keep periodic checks informational and activate installed updates when the user reopens the app.
+
+### Features
+
+* **updates:** install updates automatically on startup ([9401327](https://github.com/ItsAnunesS/agent-workbench/commit/9401327d5f89b54dc8ef423b8cfbc0f3485a8512))
+
+### Documentation
+
+* **changelog:** keep startup updates unreleased ([c30d2cb](https://github.com/ItsAnunesS/agent-workbench/commit/c30d2cb5ee872e527fec55023057fa753ff27667))
+
+### Maintenance
+
+* **release:** merge published version metadata ([62b040a](https://github.com/ItsAnunesS/agent-workbench/commit/62b040a5188d381c93b287c8b73136d96616c3dc))
 
 ## [0.12.0] - 2026-11-19
 
