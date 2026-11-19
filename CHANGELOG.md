@@ -4,6 +4,10 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+### Changed
+
+- Subtle eye blinking across robot marks in Chat, Worker, project welcome screens and message avatars, including the interactive 3D rail logo. Preserve the original artwork and pointer tracking, respect reduced motion and pause 3D blinking in hidden windows.
+
 ## [0.9.2] - 2026-11-19
 
 ### Changed

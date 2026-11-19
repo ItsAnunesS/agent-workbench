@@ -1,4 +1,4 @@
-import symbol from "../../assets/branding/brand-kit-v1/01-logos/svg/awb-symbol-orange.svg";
+import symbol from "../assets/brand-symbol-animated.svg";
 import darkWordmark from "../../assets/branding/brand-kit-v1/01-logos/svg/awb-lockup-dark.svg";
 import type { Theme } from "../theme";
 import wordmark from "../../assets/branding/brand-kit-v1/01-logos/svg/awb-lockup-light.svg";
