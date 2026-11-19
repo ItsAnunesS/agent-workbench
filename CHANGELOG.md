@@ -4,9 +4,19 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-19
+
 ### Added
 
 - Built-in Linux x86_64 AppImage updates from stable GitHub Releases: optional startup/six-hour checks, an update notification and manual download/install with progress in global settings. Validate the GitHub SHA-256 digest, size and AppImage header before atomic replacement at the existing path; preserve running work until the user closes and reopens the app. No new dependencies or release secrets.
+
+### Features
+
+* **updates:** add in-app GitHub release updates ([5904e2d](https://github.com/ItsAnunesS/agent-workbench/commit/5904e2d089634d48495b77f6d02579985807d260))
+
+### Maintenance
+
+* **release:** merge published version metadata ([b328ba3](https://github.com/ItsAnunesS/agent-workbench/commit/b328ba3091512e9922eb24bb7d7535803dd4e3ba))
 
 ## [0.10.0] - 2026-11-19
 
