@@ -1,10 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth_page;
+mod browser;
 mod desktop;
 mod i18n;
 mod openai;
 mod settings;
+mod terminal;
+mod tools;
 mod worker;
 
 use rusqlite::{params, Connection};
@@ -195,6 +198,8 @@ struct Database(Mutex<Connection>);
 
 fn initialize_database(connection: &Connection) -> rusqlite::Result<()> {
     settings::initialize(connection)?;
+    browser::initialize(connection)?;
+    terminal::initialize(connection)?;
     connection.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS workspace (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT NOT NULL);")?;
     Ok(())
 }
@@ -288,11 +293,55 @@ fn write_workspace(
         .map_err(|_| "Could not save. Check available disk space.".to_string())
 }
 
+fn app_commands(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
+    // Browser pages never receive access to native app commands.
+    if invoke.message.webview_ref().label() != "main" {
+        invoke
+            .resolver
+            .reject("App commands are unavailable to browser pages.");
+        true
+    } else {
+        let handler: Box<dyn Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync> =
+            Box::new(tauri::generate_handler![
+                load_workspace,
+                settings::load_app_settings,
+                settings::save_app_settings,
+                save_workspace,
+                desktop::desktop_integration_status,
+                desktop::desktop_integration_repair,
+                openai::openai_accounts,
+                openai::openai_login,
+                openai::openai_cancel_login,
+                openai::openai_models,
+                openai::openai_chat,
+                openai::openai_cancel_chat,
+                openai::openai_logout,
+                worker::worker_runtime,
+                worker::worker_prepare,
+                worker::worker_history,
+                worker::worker_run,
+                worker::worker_cancel,
+                worker::worker_approve,
+                tools::tool_files,
+                tools::tool_read_file,
+                browser::tool_browser,
+                browser::tool_browser_snapshot,
+                terminal::terminal_preferences,
+                terminal::save_terminal_preferences,
+                terminal::terminal_open,
+                terminal::terminal_control
+            ]);
+        handler(invoke)
+    }
+}
+
 fn main() {
     desktop::prepare_application_identity();
     let desktop_integration = desktop::initialize();
     tauri::Builder::default()
         .manage(desktop_integration)
+        .manage(browser::Browser::default())
+        .manage(terminal::Terminals::default())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -318,32 +367,13 @@ fn main() {
             app.manage(Database(Mutex::new(connection)));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            load_workspace,
-            settings::load_app_settings,
-            settings::save_app_settings,
-            save_workspace,
-            desktop::desktop_integration_status,
-            desktop::desktop_integration_repair,
-            openai::openai_accounts,
-            openai::openai_login,
-            openai::openai_cancel_login,
-            openai::openai_models,
-            openai::openai_chat,
-            openai::openai_cancel_chat,
-            openai::openai_logout,
-            worker::worker_runtime,
-            worker::worker_prepare,
-            worker::worker_history,
-            worker::worker_run,
-            worker::worker_cancel,
-            worker::worker_approve
-        ])
+        .invoke_handler(app_commands)
         .build(tauri::generate_context!())
         .expect("Could not start Agent Workbench")
         .run(|app, event| {
             if matches!(event, tauri::RunEvent::Exit) {
                 worker::shutdown(app);
+                terminal::shutdown(app);
             }
         });
 }

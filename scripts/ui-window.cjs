@@ -21,6 +21,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     window.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" } },
       invoke: async (command, args = {}) => {
+        if (command === "terminal_preferences")
+          return {
+            global: { executable: "/bin/bash", args: [] },
+            environmentOverride: null,
+            effective: { executable: "/bin/bash", args: [] },
+          };
         if (command === "load_app_settings")
           return structuredClone(globalSettings);
         if (command === "save_app_settings") {
@@ -127,7 +133,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("button", { name: "Switch to light theme", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Toggle context panel", exact: true })
+    .getByRole("button", { name: "Toggle tools panel", exact: true })
     .click();
   assert.equal(
     await page.evaluate(
@@ -139,7 +145,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     dragCount,
   );
   await page
-    .getByRole("button", { name: "Toggle context panel", exact: true })
+    .getByRole("button", { name: "Toggle tools panel", exact: true })
     .click();
   await page.screenshot({
     path: "/workspace/artifacts/window-light-0.6.0.png",

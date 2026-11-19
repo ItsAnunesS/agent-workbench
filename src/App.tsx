@@ -1,5 +1,7 @@
 import { GlobalInstructionsSettings } from "./components/GlobalInstructionsSettings";
 import { InteractiveBrandMark } from "./components/InteractiveBrandMark";
+import { ToolPanel } from "./components/ToolPanel";
+import { TerminalSettings } from "./components/TerminalSettings";
 import { Fragment } from "react";
 import {
   WorkspaceSidebar,
@@ -901,8 +903,8 @@ export default function App() {
             </span>
             <button
               className="icon-button"
-              title={rightPanel ? t("Hide context") : t("Show context")}
-              aria-label={t("Toggle context panel")}
+              title={rightPanel ? t("Hide tools") : t("Show tools")}
+              aria-label={t("Toggle tools panel")}
               onClick={() => setRightPanel(!rightPanel)}
             >
               {rightPanel ? (
@@ -1585,7 +1587,25 @@ export default function App() {
           </div>
 
           {rightPanel && (
-            <aside className="context-panel">
+            <ToolPanel
+              environmentId={environmentId}
+              projectId={projectId}
+              conversationId={conversationId}
+              projectName={project?.name}
+              runs={
+                worker.active
+                  ? [
+                      worker.active,
+                      ...worker.history.filter(
+                        (run) => run.id !== worker.active?.id,
+                      ),
+                    ]
+                  : worker.history
+              }
+              suspended={!!dialog || !!management || scopeArchived}
+              onCreateConversation={newConversation}
+              onClose={() => setRightPanel(false)}
+            >
               <div className="context-heading">
                 <span>{t("Context")}</span>
                 <span className="section-chip">
@@ -1704,7 +1724,7 @@ export default function App() {
                   {t("About this version")}
                 </button>
               </div>
-            </aside>
+            </ToolPanel>
           )}
         </div>
       </main>
@@ -1782,6 +1802,7 @@ export default function App() {
                   onChange={appearance.selectTheme}
                 />
                 <GlobalInstructionsSettings />
+                <TerminalSettings />
                 <DesktopIntegration />
                 <WorkerSetup worker={worker} />
                 {worker.issue && (
@@ -1919,6 +1940,7 @@ export default function App() {
                   </button>
                 </div>
                 <section className="settings-workspace-project">
+                  <TerminalSettings environmentId={environmentId} />
                   <h3>{t("Project settings")}</h3>
                   {project ? (
                     <>

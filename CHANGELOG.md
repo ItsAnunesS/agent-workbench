@@ -6,6 +6,10 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Tabbed workspace tools with a dashboard, scoped recent pages, lazy project file tree and read-only text previews, Worker-run diff inspection and an expandable panel.
+- Interactive local PTY terminal with bounded output flow, persistent global shell preferences and per-environment overrides, independent of the isolated AI Worker.
+- Native integrated browser with persistent project/conversation profiles for cookies, cache and site storage, HTTP/HTTPS navigation and explicit denial of native IPC to remote pages.
+- Native Xvfb/WebKit regression coverage for profile isolation, cookie persistence, IPC rejection and real PTY command input/output.
 - Three.js 3D rail logo using the original artwork, with pointer-following eyes, subtle tilt, on-demand rendering, reduced-motion support and SVG fallback when WebGL is unavailable or lost.
 - Persistent global AGENTS.md instructions and editable commit, pull request and branch naming conventions, applied to Chat and Worker across workspaces. Workspace settings now expose the selected project's folder and memory alongside its environment account and instructions.
 - Separate global and workspace settings: application preferences and shared runtime in the rail settings button, with account and environment instructions in the OpenAI workspace card.

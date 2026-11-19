@@ -70,11 +70,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   await page.setViewportSize({ width: 960, height: 700 });
   await page
-    .getByRole("button", { name: "Toggle context panel", exact: true })
+    .getByRole("button", { name: "Toggle tools panel", exact: true })
     .click();
   assert.equal(await page.locator(".context-panel").count(), 0);
   await page
-    .getByRole("button", { name: "Toggle context panel", exact: true })
+    .getByRole("button", { name: "Toggle tools panel", exact: true })
     .click();
   assert.equal(await page.locator(".context-panel").isVisible(), true);
   assert.equal(

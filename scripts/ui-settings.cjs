@@ -43,6 +43,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     window.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" } },
       invoke: async (command, args = {}) => {
+        if (command === "terminal_preferences")
+          return {
+            global: { executable: "/bin/bash", args: [] },
+            environmentOverride: null,
+            effective: { executable: "/bin/bash", args: [] },
+          };
         if (command === "load_app_settings")
           return structuredClone(globalSettings);
         if (command === "save_app_settings") {

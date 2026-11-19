@@ -44,6 +44,8 @@ It runs TypeScript checks, Vitest and Rust tests before packaging. The UI regres
 
 Do not add credentials, local databases, build caches, generated bundles or private project data to commits. Do not weaken approvals or isolation to make a test pass. Ask before adding dependencies or changing authentication contracts.
 
+For native browser or terminal changes, also run `bash scripts/test-native-tools.sh` in the Docker builder. It creates a temporary Xvfb display and disposable XDG data/config/cache directories, then runs the native WebKit/PTY smoke test with synthetic local pages. In Docker, pass `-e WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1` to the test container when WebKit cannot create its nested sandbox; this flag is only for that test process. Run `scripts/ui-tools.cjs` against Vite with Playwright to validate the tool tabs, file previews, diffs, terminal lifecycle and shell configuration interface.
+
 Keep identifiers, database names, code comments and canonical system messages in English. User-facing text belongs in `src/locales/en.json` and `src/locales/pt.json`, including native errors and authentication pages. Use complete messages with named placeholders. Native commands accept an optional `locale` (`en` or `pt`) and default to English; the frontend passes its saved preference. Persist canonical messages and localize response copies so language changes do not rewrite user data. Keep both catalogs in sync and run the i18n tests when adding messages.
 
 ## Publishing

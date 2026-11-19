@@ -21,6 +21,9 @@ const labels: Record<string, string> = {
   failed: "Failed",
   interrupted: "Interrupted",
 };
+export function workerStatusLabel(status: string) {
+  return t(labels[status] || status);
+}
 function Activity({ event }: { event: WorkerEvent }) {
   const item = event.item;
   if (!item) return <p>{t(event.text)}</p>;

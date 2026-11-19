@@ -229,7 +229,7 @@ fn scope(
             .map(|item| item.id.clone()),
     ))
 }
-fn project_path(raw: &str, app_directory: &Path) -> Result<PathBuf, String> {
+pub(crate) fn project_path(raw: &str, app_directory: &Path) -> Result<PathBuf, String> {
     let path = std::fs::canonicalize(raw)
         .map_err(|_| "The project folder does not exist or is inaccessible.")?;
     if !path.is_dir()

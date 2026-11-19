@@ -54,6 +54,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .click();
   await page.getByLabel("Name", { exact: true }).fill("Projeto profissional");
   await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("tab", { name: "Context", exact: true }).click();
   await page
     .getByRole("button", { name: "Edit context", exact: true })
     .click();
