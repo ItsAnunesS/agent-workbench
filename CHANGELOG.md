@@ -4,6 +4,8 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-19
+
 ### Changed
 
 - Removed the separate request-response link below Chat messages; sending a message through the composer remains the way to request a response.
@@ -13,6 +15,16 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 - Automatic root AGENTS.md detection as project-specific workspace instructions for Chat and Worker, with source preview, refresh, lowercase fallback, bounded safe reads and per-request reloads. Global/manual settings remain separate and project rules cannot expand runtime permissions.
 - Visible rename action beside conversation and task titles, sharing the existing sidebar rename dialog and persisted workspace names. Custom names are preserved when sending the first message.
 - Usage panel with persisted, account/environment-scoped token counts from Chat, Worker and automatic approval reviews, daily history and recent reported responses. Missing counts remain unknown; cached/reasoning subsets are not double-counted. Plan allowance and credits link to the official ChatGPT usage page because the current connection does not expose those values.
+
+### Features
+
+* **chat:** expose conversation and task renaming ([b11fcea](https://github.com/ItsAnunesS/agent-workbench/commit/b11fcea9c29464685fd9f7928c9375c1b72a1d05))
+* **settings:** detect project root AGENTS.md instructions ([862c4a8](https://github.com/ItsAnunesS/agent-workbench/commit/862c4a8bd89d08204ae6d5b1694b171d9a019e87))
+* **usage:** track reported tokens by account and environment ([15d0671](https://github.com/ItsAnunesS/agent-workbench/commit/15d06711308b21410fd5ba84a3a27b48b4e4d08a))
+
+### Bug Fixes
+
+* **chat:** remove redundant response request action ([b3fc201](https://github.com/ItsAnunesS/agent-workbench/commit/b3fc2013362f6a0f784e0957546f9f87ee9a4614))
 
 ## [0.8.0] - 2026-11-19
 
