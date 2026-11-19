@@ -1,5 +1,7 @@
+import { invoke } from "../api";
+import { t, localizeMessage } from "../i18n";
 import { useEffect, useState } from "react";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
 import { Monitor } from "lucide-react";
 
 type Status = { supported: boolean; installed: boolean; issue: string | null };
@@ -37,15 +39,17 @@ export function DesktopIntegration() {
     <div className="desktop-integration">
       <Monitor size={17} />
       <div>
-        <strong>Logo no sistema</strong>
+        <strong>{t("System integration")}</strong>
         <p>
           {status?.installed
-            ? "O logo e o atalho estão registados no menu de aplicações deste utilizador."
-            : "A integração com o menu precisa de atenção."}
+            ? t(
+                "The logo and launcher are registered in this user's application menu.",
+              )
+            : t("Application menu integration needs attention.")}
         </p>
         {(issue || status?.issue) && (
           <p className="account-issue" role="alert">
-            {issue || status?.issue}
+            {localizeMessage(issue || status?.issue)}
           </p>
         )}
         {status?.supported && (
@@ -55,7 +59,7 @@ export function DesktopIntegration() {
             disabled={busy}
             onClick={repair}
           >
-            {busy ? "A atualizar..." : "Reparar integração"}
+            {busy ? t("Updating...") : t("Repair integration")}
           </button>
         )}
       </div>

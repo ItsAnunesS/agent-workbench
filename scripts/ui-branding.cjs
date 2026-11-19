@@ -10,7 +10,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("http://127.0.0.1:1420");
-  await page.getByRole("heading", { name: "Uma ideia começa aqui." }).waitFor();
+  await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   await page.evaluate(() => document.fonts.ready);
   assert.equal(
     await page.evaluate(() => document.fonts.check('14px "Open Sans"')),
@@ -27,18 +27,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     fullPage: true,
   });
 
-  const draft = page.getByRole("textbox", { name: "Mensagem", exact: true });
+  const draft = page.getByRole("textbox", { name: "Message", exact: true });
   await draft.fill("Rascunho do ambiente pessoal");
   await page
-    .getByRole("button", { name: "Ambiente Trabalho", exact: true })
+    .getByRole("button", { name: "Environment Work", exact: true })
     .click();
   assert.equal(await draft.inputValue(), "");
   await draft.fill("Rascunho do trabalho");
   await page
-    .getByRole("button", { name: "Ambiente Pessoal", exact: true })
+    .getByRole("button", { name: "Environment Personal", exact: true })
     .click();
   assert.equal(await draft.inputValue(), "Rascunho do ambiente pessoal");
-  await page.getByRole("button", { name: "Definições", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.waitFor();
   assert.equal(
@@ -64,17 +64,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   await dialog.waitFor({ state: "hidden" });
   assert.equal(
     await page
-      .getByRole("button", { name: "Definições", exact: true })
+      .getByRole("button", { name: "Settings", exact: true })
       .evaluate((button) => document.activeElement === button),
     true,
   );
   await page.setViewportSize({ width: 960, height: 700 });
   await page
-    .getByRole("button", { name: "Alternar painel de contexto", exact: true })
+    .getByRole("button", { name: "Toggle context panel", exact: true })
     .click();
   assert.equal(await page.locator(".context-panel").count(), 0);
   await page
-    .getByRole("button", { name: "Alternar painel de contexto", exact: true })
+    .getByRole("button", { name: "Toggle context panel", exact: true })
     .click();
   assert.equal(await page.locator(".context-panel").isVisible(), true);
   assert.equal(
@@ -124,7 +124,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     );
     if (state === "received") {
       await page
-        .getByRole("heading", { name: "Continua na aplicação.", exact: true })
+        .getByRole("heading", { name: "Continue in the app.", exact: true })
         .waitFor();
       await page.screenshot({
         path: "/workspace/artifacts/branding-login-0.3.0.png",

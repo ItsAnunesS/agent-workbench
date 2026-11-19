@@ -39,10 +39,16 @@ Built with **Tauri, React, TypeScript and Rust**. Linux AppImage is the current 
 - Separate environments for personal work, clients or teams, with one OpenAI account per environment.
 - Independent Chat and Worker histories. Context crosses modes only through an explicit handoff.
 - Streaming Chat responses, model selection and cancellation using an eligible ChatGPT subscription.
-- Codex Worker with command activity, file diffs, one-time approvals and cancellation.
+- Codex Worker with inline command activity, public progress summaries, file diffs, persistent elapsed time, approvals and cancellation.
+- Expandable projects containing their chats/tasks, with unassigned conversations listed separately. Right-click or use the action menu to rename, pin, duplicate, move, archive, restore or delete items.
 - One Docker container per task. Only the selected project folder is mounted; commands have no external network access. OpenAI credentials remain in the host app.
 - Local SQLite storage, environment instructions and project memory.
 - Dark, light and system themes; integrated window controls; native desktop icons.
+- English by default, with a persistent English/Portuguese language selector in Settings. Interface text, native API errors, Worker status messages and the login callback page follow the selected language.
+
+Worker offers **Ask for approval** (the default) and **Approve for me** in the composer. Automatic review uses the selected model to approve only actions assessed as low risk. Potentially unsafe or inconclusive actions, and review failures, fall back to manual approval. Both modes keep the same Docker, project-folder and network restrictions. The setting applies to the next task and is saved on this device.
+
+Archiving preserves content. Deleting a conversation also removes its task records; deleting a project keeps its conversations in General and never deletes local project files. Active work cannot be archived, moved or deleted from the action menu.
 
 Worker edits the project folder directly. Cancelling a task does not revert edits. The initial Worker image includes Node.js, Python, Git and build essentials; other toolchains are not installed automatically.
 
@@ -62,6 +68,8 @@ Worker edits the project folder directly. Cancelling a task does not revert edit
 Subscription access depends on account eligibility and the models granted by OpenAI. A ChatGPT plan does not imply unrestricted access. The app keeps its own conversation history; it does not import the official ChatGPT or Codex history.
 
 On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Settings > Repair integration** refreshes the launcher.
+
+Choose **Settings > Language** to change the app language. Existing environment names, conversations, project memory, model responses, code and command output are preserved as written. New installations create the default environments as **Personal** and **Work**.
 
 New AppImages include the standard update source for the latest stable GitHub Release. Import the AppImage into Gear Lever or another compatible manager to detect and install updates without entering a repository URL. Update checks and automatic installation depend on the manager's settings. Older AppImages without this metadata need a one-time manual replacement. AppImageUpdate is also supported through the `.zsync` file published alongside each release; download the `.AppImage` to run the app.
 

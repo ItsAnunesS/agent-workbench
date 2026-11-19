@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -18,7 +19,7 @@ export function WindowControls({
         const value = await getCurrentWindow().isMaximized();
         if (alive) setMaximized(value);
       } catch {
-        if (alive) onError("Não foi possível consultar o estado da janela.");
+        if (alive) onError("Could not check the window state.");
       }
     };
     void refresh();
@@ -40,21 +41,21 @@ export function WindowControls({
         setMaximized(await window.isMaximized());
       }
     } catch {
-      onError("Não foi possível controlar a janela. Tenta novamente.");
+      onError(t("Could not control the window. Try again."));
     }
   }
   return (
     <div
       className="window-controls"
       role="group"
-      aria-label="Controlos da janela"
+      aria-label={t("Window controls")}
       data-tauri-drag-region="false"
     >
       <button
         type="button"
         disabled={!native}
-        aria-label="Minimizar janela"
-        title="Minimizar"
+        aria-label={t("Minimize window")}
+        title={t("Minimize")}
         onClick={() => control("minimize")}
       >
         <Minus size={15} />
@@ -62,8 +63,8 @@ export function WindowControls({
       <button
         type="button"
         disabled={!native}
-        aria-label={maximized ? "Restaurar janela" : "Maximizar janela"}
-        title={maximized ? "Restaurar" : "Maximizar"}
+        aria-label={maximized ? t("Restore window") : t("Maximize window")}
+        title={maximized ? t("Restore") : t("Maximize")}
         onClick={() => control("maximize")}
       >
         {maximized ? <Copy size={13} /> : <Square size={13} />}
@@ -72,8 +73,8 @@ export function WindowControls({
         type="button"
         disabled={!native}
         className="window-close"
-        aria-label="Fechar janela"
-        title="Fechar"
+        aria-label={t("Close window")}
+        title={t("Close")}
         onClick={() => control("close")}
       >
         <X size={16} />

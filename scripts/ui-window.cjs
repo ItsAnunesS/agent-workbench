@@ -28,7 +28,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           return;
         }
         if (command === "desktop_integration_status")
-          return { supported: true, installed: false, issue: "Falha de integração simulada." };
+          return { supported: true, installed: false, issue: "Could not check system integration." };
         if (command === "desktop_integration_repair") { window.desktopRepaired = true; return { supported: true, installed: true, issue: null }; }
         if (command === "load_workspace")
           return {
@@ -36,7 +36,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
             environments: [
               {
                 id: "personal",
-                name: "Pessoal",
+                name: "Personal",
                 color: "violet",
                 instructions: "",
               },
@@ -46,13 +46,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           };
         if (command === "openai_accounts") return [];
         if (command === "worker_runtime")
-          return { available: true, ready: true, message: "Codex pronto." };
+          return { available: true, ready: true, message: "Codex is ready. Execution is isolated by project." };
         throw `Unexpected command: ${command}`;
       },
     };
   });
   await page.goto("http://127.0.0.1:1420");
-  await page.getByRole("heading", { name: "Uma ideia começa aqui." }).waitFor();
+  await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   // Exercise the drag handler shipped by the installed Tauri version, including its interactive-element guard.
   const lock = fs.readFileSync("/workspace/src-tauri/Cargo.lock", "utf8");
   const version = lock.match(/name = "tauri"\nversion = "([^"]+)"/)[1];
@@ -80,7 +80,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   await page.locator(".breadcrumb span").first().click();
   await page.locator(".breadcrumb span").first().dblclick();
   await page
-    .getByRole("button", { name: "Restaurar janela", exact: true })
+    .getByRole("button", { name: "Restore window", exact: true })
     .waitFor();
   const dragCount = await page.evaluate(
     () =>
@@ -90,19 +90,19 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   assert.ok(dragCount > 0);
   await page
-    .getByRole("button", { name: "Restaurar janela", exact: true })
+    .getByRole("button", { name: "Restore window", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Maximizar janela", exact: true })
+    .getByRole("button", { name: "Maximize window", exact: true })
     .waitFor();
   await page
-    .getByRole("button", { name: "Minimizar janela", exact: true })
+    .getByRole("button", { name: "Minimize window", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Ativar tema claro", exact: true })
+    .getByRole("button", { name: "Switch to light theme", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Alternar painel de contexto", exact: true })
+    .getByRole("button", { name: "Toggle context panel", exact: true })
     .click();
   assert.equal(
     await page.evaluate(
@@ -114,7 +114,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     dragCount,
   );
   await page
-    .getByRole("button", { name: "Alternar painel de contexto", exact: true })
+    .getByRole("button", { name: "Toggle context panel", exact: true })
     .click();
   await page.screenshot({
     path: "/workspace/artifacts/window-light-0.6.0.png",
@@ -122,20 +122,20 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     animations: "disabled",
   });
   await page
-    .getByRole("button", { name: "Ativar tema escuro", exact: true })
+    .getByRole("button", { name: "Switch to dark theme", exact: true })
     .click();
   await page.screenshot({
     path: "/workspace/artifacts/window-dark-0.6.0.png",
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Definições", exact: true }).click();
-  await page.getByText("Falha de integração simulada.", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Reparar integração", exact: true }).click();
-  await page.getByText("O logo e o atalho estão registados no menu de aplicações deste utilizador.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByText("Could not check system integration.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Repair integration", exact: true }).click();
+  await page.getByText("The logo and launcher are registered in this user's application menu.", { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => window.desktopRepaired), true);
   await page
-    .getByRole("button", { name: "Fechar janela", exact: true })
+    .getByRole("button", { name: "Close window", exact: true })
     .click();
   await page.keyboard.press("Escape");
   const calls = await page.evaluate(() => window.windowCalls);

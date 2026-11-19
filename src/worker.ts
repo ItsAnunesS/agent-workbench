@@ -1,6 +1,37 @@
+import { invoke } from "./api";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
+import { Channel, isTauri } from "@tauri-apps/api/core";
 import type { Conversation } from "./workspace";
+
+export type ApprovalMode = "ask" | "auto";
+export function readApprovalMode(): ApprovalMode {
+  try {
+    return localStorage.getItem("workbench.approvalMode") === "auto"
+      ? "auto"
+      : "ask";
+  } catch {
+    return "ask";
+  }
+}
+export function saveApprovalMode(value: ApprovalMode) {
+  try {
+    localStorage.setItem("workbench.approvalMode", value);
+  } catch {
+    /* Keep the preference in memory when storage is unavailable. */
+  }
+}
+export function workerAnswer(run: WorkerRun) {
+  if (run.finalOutput != null) return run.finalOutput;
+  const messages = coalesceEvents(run.events).filter(
+    (event) => event.item?.type === "agentMessage",
+  );
+  if (
+    messages.length &&
+    messages.every((event) => event.item?.phase === "commentary")
+  )
+    return "";
+  return messages.at(-1)?.item?.text || run.output;
+}
 
 export type WorkerEvent = {
   kind: string;
@@ -8,6 +39,9 @@ export type WorkerEvent = {
   approvalId?: string;
   item?: {
     type: string;
+    text?: string;
+    phase?: string;
+    summary?: string;
     id?: string;
     command?: string;
     cwd?: string;
@@ -17,6 +51,21 @@ export type WorkerEvent = {
     changes?: { path: string; diff: string; kind?: unknown }[];
   };
 };
+export function coalesceEvents(events: WorkerEvent[]): WorkerEvent[] {
+  const result: WorkerEvent[] = [];
+  for (const event of events) {
+    const index =
+      event.kind === "activity" && event.item?.id
+        ? result.findIndex(
+            (entry) =>
+              entry.kind === "activity" && entry.item?.id === event.item!.id,
+          )
+        : -1;
+    if (index >= 0) result[index] = event;
+    else result.push(event);
+  }
+  return result;
+}
 export type WorkerRun = {
   id: string;
   environmentId: string;
@@ -25,6 +74,9 @@ export type WorkerRun = {
   model: string;
   status: string;
   createdAt: number;
+  durationMs?: number;
+  userMessageId?: string;
+  finalOutput?: string;
   events: WorkerEvent[];
   output: string;
   error: string | null;
@@ -53,7 +105,7 @@ export function useWorker(
       setRuntime({
         available: false,
         ready: false,
-        message: "Abre a aplicação desktop para usar o Worker.",
+        message: "Open the desktop app to use Worker.",
       });
       return;
     }
@@ -98,7 +150,11 @@ export function useWorker(
       setPreparing(false);
     }
   }
-  async function start(target: Conversation, model: string) {
+  async function start(
+    target: Conversation,
+    model: string,
+    approvalMode: ApprovalMode,
+  ) {
     if (!isTauri() || running.current || !target.projectId) return null;
     running.current = true;
     setIssue("");
@@ -110,6 +166,9 @@ export function useWorker(
       model,
       status: "running",
       createdAt: Date.now() / 1000,
+      userMessageId: target.messages
+        .filter((item) => item.role !== "assistant")
+        .at(-1)?.id,
       events: [],
       output: "",
       error: null,
@@ -119,8 +178,40 @@ export function useWorker(
     channel.onmessage = (event) => {
       setActive((previous) => {
         if (!previous || previous.id !== run.id) return previous;
-        if (event.kind === "delta")
-          return { ...previous, output: previous.output + event.text };
+        if (event.kind === "delta") {
+          const events = [...previous.events];
+          if (event.item?.id) {
+            const index = events.findIndex(
+              (item) =>
+                item.item?.id === event.item!.id &&
+                item.item?.type === "agentMessage",
+            );
+            if (index >= 0)
+              events[index] = {
+                ...events[index],
+                item: {
+                  ...events[index].item!,
+                  text: (events[index].item?.text || "") + event.text,
+                },
+              };
+            else
+              events.push({
+                kind: "activity",
+                text: "",
+                item: { ...event.item, text: event.text },
+              });
+          }
+          return { ...previous, output: previous.output + event.text, events };
+        }
+        const events = [...previous.events];
+        const index = event.item?.id
+          ? events.findIndex(
+              (item) =>
+                item.item?.id === event.item!.id && item.kind === "activity",
+            )
+          : -1;
+        if (index >= 0 && event.kind === "activity") events[index] = event;
+        else events.push(event);
         return {
           ...previous,
           status:
@@ -141,18 +232,26 @@ export function useWorker(
                   ? "awaitingApproval"
                   : "running"
                 : previous.status,
-          events: [...previous.events, event],
+          events,
         };
       });
     };
     try {
-      const result = await invoke<WorkerRun>("worker_run", {
+      const response = await invoke<WorkerRun>("worker_run", {
         environmentId: target.environmentId,
         conversationId: target.id,
         model,
         runId: run.id,
         onEvent: channel,
+        approvalMode,
+        userMessageId: run.userMessageId,
       });
+      const result = {
+        ...response,
+        userMessageId: response.userMessageId || run.userMessageId,
+        durationMs:
+          response.durationMs ?? Math.max(0, Date.now() - run.createdAt * 1000),
+      };
       if (
         selection.current.environmentId === target.environmentId &&
         selection.current.conversationId === target.id
@@ -218,7 +317,11 @@ export function useWorker(
     checking,
     issue,
     active,
-    history,
+    history: history.filter(
+      (run) =>
+        run.environmentId === environmentId &&
+        run.conversationId === conversationId,
+    ),
     start,
     prepare,
     refresh,

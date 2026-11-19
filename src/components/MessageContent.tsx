@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { messageBlocks } from "../message-content";
@@ -9,22 +10,22 @@ function CodeBlock({
   content: string;
   language: string;
 }) {
-  const [copyState, setCopyState] = useState("Copiar");
+  const [copyState, setCopyState] = useState("Copy");
   async function copy() {
     try {
       await navigator.clipboard.writeText(content);
-      setCopyState("Copiado");
+      setCopyState("Copied");
     } catch {
-      setCopyState("Seleciona o código para copiar");
+      setCopyState("Select the code to copy");
     }
   }
   return (
     <div className="code-block">
       <div className="code-block-header">
-        <span>{language || "Código"}</span>
-        <button onClick={copy} aria-label="Copiar código">
-          {copyState === "Copiado" ? <Check size={13} /> : <Copy size={13} />}
-          <span role="status">{copyState}</span>
+        <span>{language || t("Code")}</span>
+        <button onClick={copy} aria-label={t("Copy code")}>
+          {copyState === "Copied" ? <Check size={13} /> : <Copy size={13} />}
+          <span role="status">{t(copyState)}</span>
         </button>
       </div>
       <pre>

@@ -22,6 +22,12 @@ pub struct IntegrationStatus {
     installed: bool,
     issue: Option<String>,
 }
+impl IntegrationStatus {
+    fn localized(mut self, locale: crate::i18n::Locale) -> Self {
+        self.issue = self.issue.map(|issue| crate::i18n::message(&issue, locale));
+        self
+    }
+}
 pub struct DesktopIntegration {
     status: Mutex<IntegrationStatus>,
     target: Option<(PathBuf, PathBuf)>,
@@ -93,9 +99,9 @@ pub fn initialize() -> DesktopIntegration {
 fn exec_argument(path: &Path) -> Result<String, String> {
     let value = path
         .to_str()
-        .ok_or("O caminho do AppImage não está num formato suportado.")?;
+        .ok_or("The AppImage path uses an unsupported format.")?;
     if !path.is_absolute() || value.contains(['\n', '\r', '\0']) {
-        return Err("O caminho do AppImage não é válido para criar o atalho.".into());
+        return Err("The AppImage path is not valid for creating a launcher.".into());
     }
     // Exec quoting and desktop-entry string escaping are separate layers.
     let mut quoted = String::from("\"");
@@ -116,9 +122,9 @@ fn write_owned_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if std::fs::read(path).is_ok_and(|existing| existing == bytes) {
         return Ok(());
     }
-    let parent = path.parent().ok_or("Destino do atalho inválido.")?;
+    let parent = path.parent().ok_or("Invalid launcher destination.")?;
     std::fs::create_dir_all(parent)
-        .map_err(|_| "Não foi possível criar as pastas de integração no menu.")?;
+        .map_err(|_| "Could not create application menu integration folders.")?;
     let temporary = parent.join(format!(".{APP_ID}-{}.tmp", uuid::Uuid::new_v4()));
     let result = (|| {
         use std::io::Write;
@@ -126,13 +132,13 @@ fn write_owned_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
             .write(true)
             .create_new(true)
             .open(&temporary)
-            .map_err(|_| "Não foi possível preparar a integração no menu.")?;
+            .map_err(|_| "Could not prepare application menu integration.")?;
         file.write_all(bytes)
-            .map_err(|_| "Não foi possível guardar o logo ou o atalho.")?;
+            .map_err(|_| "Could not save the logo or launcher.")?;
         file.sync_all()
-            .map_err(|_| "Não foi possível concluir a gravação da integração.")?;
+            .map_err(|_| "Could not finish writing the integration.")?;
         std::fs::rename(&temporary, path)
-            .map_err(|_| "Não foi possível atualizar o logo ou o atalho no menu.")?;
+            .map_err(|_| "Could not update the logo or launcher in the menu.")?;
         Ok(())
     })();
     if result.is_err() {
@@ -142,7 +148,7 @@ fn write_owned_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 fn install(image: &Path, data: &Path) -> Result<(), String> {
     if !image.is_file() || !data.is_absolute() {
-        return Err("O AppImage ou a pasta de dados do utilizador não está disponível.".into());
+        return Err("The AppImage or user data folder is unavailable.".into());
     }
     let command = exec_argument(image)?;
     for (size, bytes) in ICONS {
@@ -153,7 +159,7 @@ fn install(image: &Path, data: &Path) -> Result<(), String> {
     let theme = data.join("icons/hicolor");
     std::fs::File::open(&theme)
         .and_then(|directory| directory.set_modified(std::time::SystemTime::now()))
-        .map_err(|_| "Não foi possível atualizar o índice de ícones do utilizador.")?;
+        .map_err(|_| "Could not update the user's icon index.")?;
     let entry = TEMPLATE.replace("Exec=agent-workbench", &format!("Exec={command}"));
     write_owned_file(
         &data.join(format!("applications/{APP_ID}.desktop")),
@@ -163,36 +169,52 @@ fn install(image: &Path, data: &Path) -> Result<(), String> {
 #[tauri::command]
 pub fn desktop_integration_status(
     state: State<'_, DesktopIntegration>,
+
+    locale: Option<String>,
 ) -> Result<IntegrationStatus, String> {
-    state
-        .status
-        .lock()
-        .map(|status| status.clone())
-        .map_err(|_| "Não foi possível consultar a integração do sistema.".into())
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<IntegrationStatus, String> = (|| {
+        state
+            .status
+            .lock()
+            .map(|status| status.clone())
+            .map_err(|_| "Could not check system integration.".into())
+    })();
+    result
+        .map_err(|error| crate::i18n::message(&error, language))
+        .map(|value| value.localized(language))
 }
 #[tauri::command]
 pub fn desktop_integration_repair(
     state: State<'_, DesktopIntegration>,
+
+    locale: Option<String>,
 ) -> Result<IntegrationStatus, String> {
-    let (image, data) = state
-        .target
-        .as_ref()
-        .ok_or("A reparação está disponível na versão AppImage para Linux.")?;
-    let mut status = state
-        .status
-        .lock()
-        .map_err(|_| "Integração indisponível.")?;
-    match install(image, data) {
-        Ok(()) => {
-            status.installed = true;
-            status.issue = None;
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<IntegrationStatus, String> = (|| {
+        let (image, data) = state
+            .target
+            .as_ref()
+            .ok_or("Repair is available in the Linux AppImage version.")?;
+        let mut status = state
+            .status
+            .lock()
+            .map_err(|_| "Integration unavailable.")?;
+        match install(image, data) {
+            Ok(()) => {
+                status.installed = true;
+                status.issue = None;
+            }
+            Err(error) => {
+                status.installed = false;
+                status.issue = Some(error);
+            }
         }
-        Err(error) => {
-            status.installed = false;
-            status.issue = Some(error);
-        }
-    }
-    Ok(status.clone())
+        Ok(status.clone())
+    })();
+    result
+        .map_err(|error| crate::i18n::message(&error, language))
+        .map(|value| value.localized(language))
 }
 
 #[cfg(test)]

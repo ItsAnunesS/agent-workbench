@@ -1,7 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=Agent Workbench
-Comment=Ambientes separados para conversar e programar com IA
+Comment=Separate workspaces for AI conversations and coding
+Comment[pt]=Ambientes separados para conversar e programar com IA
 Exec=agent-workbench
 Icon=com.anuness.agentworkbench
 StartupWMClass=com.anuness.agentworkbench

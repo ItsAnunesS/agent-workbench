@@ -1,6 +1,17 @@
+import { Fragment } from "react";
+import {
+  WorkspaceSidebar,
+  type SidebarTarget,
+  type SidebarAction,
+} from "./components/WorkspaceSidebar";
+import { ManagementDialog } from "./components/ManagementDialog";
+import { ActivityIndicator } from "./components/ActivityIndicator";
+import { invoke } from "./api";
+import { t, useLocale, dateLocale, localizeMessage } from "./i18n";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { version as appVersion } from "../package.json";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
+import { Channel, isTauri } from "@tauri-apps/api/core";
 import {
   ArrowRight,
   ArrowUp,
@@ -12,10 +23,8 @@ import {
   Cpu,
   Folder,
   FolderPlus,
-  Hash,
   Layers3,
   LockKeyhole,
-  MessageSquare,
   PanelRightClose,
   PanelRightOpen,
   Plus,
@@ -33,14 +42,27 @@ import { DesktopIntegration } from "./components/DesktopIntegration";
 import { WindowControls } from "./components/WindowControls";
 import { useTheme } from "./theme";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
-import { useWorker } from "./worker";
-import { WorkerPanel, WorkerSetup } from "./components/WorkerPanel";
+import {
+  useWorker,
+  readApprovalMode,
+  saveApprovalMode,
+  workerAnswer,
+  type ApprovalMode,
+} from "./worker";
+import {
+  WorkerPanel,
+  WorkerSetup,
+  RunActivity,
+} from "./components/WorkerPanel";
 import { BrandMark, BrandWordmark } from "./components/Brand";
 import { MessageContent } from "./components/MessageContent";
 import {
   createConversation,
   createHandoff,
-  visibleConversations,
+  isArchived,
+  removeConversation,
+  removeProject,
+  duplicateConversation,
   type Color,
   type Conversation,
   type Mode,
@@ -48,23 +70,19 @@ import {
 } from "./workspace";
 
 type Dialog =
-  | "projectPath"
-  | "environment"
-  | "project"
-  | "memory"
-  | "settings"
-  | null;
+  "projectPath" | "environment" | "project" | "memory" | "settings" | null;
 const previewWorkspace: Workspace = {
   version: 1,
   environments: [
-    { id: "personal", name: "Pessoal", color: "violet", instructions: "" },
-    { id: "work", name: "Trabalho", color: "blue", instructions: "" },
+    { id: "personal", name: "Personal", color: "violet", instructions: "" },
+    { id: "work", name: "Work", color: "blue", instructions: "" },
   ],
   projects: [],
   conversations: [],
 };
 
 export default function App() {
+  useLocale();
   const appearance = useTheme();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [environmentId, setEnvironmentId] = useState("personal");
@@ -75,7 +93,14 @@ export default function App() {
   const [rightPanel, setRightPanel] = useState(() => window.innerWidth > 1180);
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
-  const [saveStatus, setSaveStatus] = useState("Guardado neste dispositivo");
+  const [approvalMode, setApprovalMode] =
+    useState<ApprovalMode>(readApprovalMode);
+  const [management, setManagement] = useState<{
+    target: SidebarTarget;
+    action: "rename" | "move" | "delete";
+    value: string;
+  } | null>(null);
+  const [saveStatus, setSaveStatus] = useState("Saved on this device");
   const [error, setError] = useState("");
   const [formName, setFormName] = useState("");
   const [formPath, setFormPath] = useState("");
@@ -93,6 +118,8 @@ export default function App() {
     environmentId: string;
     conversationId: string;
     text: string;
+    summary: string;
+    startedAt: number;
   } | null>(null);
   const requestRef = useRef<string | null>(null);
   const [lastUsage, setLastUsage] = useState<{
@@ -166,10 +193,7 @@ export default function App() {
         }
       })
       .catch(() => {
-        if (alive)
-          setError(
-            "Não foi possível abrir os dados locais. Reinicia a aplicação.",
-          );
+        if (alive) setError("Could not open local data. Restart the app.");
       });
     return () => {
       alive = false;
@@ -195,24 +219,18 @@ export default function App() {
   function commit(next: Workspace): Promise<boolean> {
     workspaceRef.current = next;
     setWorkspace(next);
-    setSaveStatus("A guardar...");
+    setSaveStatus("Saving...");
     setError("");
     const save = saveQueue.current
       .then(async () => {
         if (isTauri()) await invoke("save_workspace", { workspace: next });
         savedWorkspaceRef.current = next;
-        setSaveStatus(
-          isTauri()
-            ? "Guardado neste dispositivo"
-            : "Pré-visualização no navegador",
-        );
+        setSaveStatus(isTauri() ? "Saved on this device" : "Browser preview");
         return true;
       })
       .catch(() => {
-        setError(
-          "Não foi possível guardar. Mantém a aplicação aberta e tenta novamente.",
-        );
-        setSaveStatus("Alterações por guardar");
+        setError("Could not save. Keep the app open and try again.");
+        setSaveStatus("Unsaved changes");
         return false;
       });
     saveQueue.current = save.then(() => undefined);
@@ -220,6 +238,8 @@ export default function App() {
   }
 
   async function requestResponse(target: Conversation) {
+    if (workspaceRef.current && isArchived(workspaceRef.current, target))
+      return;
     if (
       !isTauri() ||
       requestRef.current ||
@@ -235,8 +255,12 @@ export default function App() {
       environmentId: target.environmentId,
       conversationId: target.id,
       text: "",
+      summary: "",
+      startedAt: Date.now(),
     });
+    const startedAt = performance.now();
     let text = "";
+    let summary = "";
     const outcome = {
       status: "failed" as "completed" | "interrupted" | "failed",
     };
@@ -247,6 +271,11 @@ export default function App() {
         text += event.text;
         setActiveRequest((previous) =>
           previous?.id === id ? { ...previous, text } : previous,
+        );
+      } else if (event.type === "summary") {
+        summary = (summary + event.text).slice(0, 20000);
+        setActiveRequest((previous) =>
+          previous?.id === id ? { ...previous, summary } : previous,
         );
       } else if (event.type === "completed") {
         outcome.status = "completed";
@@ -262,9 +291,7 @@ export default function App() {
     try {
       await saveQueue.current;
       if (workspaceRef.current !== savedWorkspaceRef.current)
-        throw new Error(
-          "Guarda as alterações locais antes de enviar o contexto à OpenAI.",
-        );
+        throw new Error("Save local changes before sending context to OpenAI.");
       await invoke("openai_chat", {
         environmentId: target.environmentId,
         conversationId: target.id,
@@ -273,7 +300,7 @@ export default function App() {
         onEvent: channel,
       });
       if (!text && outcome.status === "completed")
-        responseError = "A OpenAI concluiu o pedido sem devolver texto.";
+        responseError = "OpenAI completed the request without returning text.";
     } catch (failure) {
       responseError = String(failure);
     } finally {
@@ -292,6 +319,8 @@ export default function App() {
                       role: "assistant",
                       status: outcome.status,
                       content: text,
+                      summary,
+                      durationMs: Math.round(performance.now() - startedAt),
                       createdAt: new Date().toISOString(),
                     },
                   ],
@@ -307,6 +336,8 @@ export default function App() {
   }
 
   async function executeWorker(target: Conversation) {
+    if (workspaceRef.current && isArchived(workspaceRef.current, target))
+      return;
     if (
       worker.active ||
       requestRef.current ||
@@ -316,12 +347,12 @@ export default function App() {
       return;
     await saveQueue.current;
     if (workspaceRef.current !== savedWorkspaceRef.current) {
-      setError("Guarda as alterações antes de executar a tarefa.");
+      setError("Save changes before running the task.");
       return;
     }
-    const result = await worker.start(target, openai.model);
+    const result = await worker.start(target, openai.model, approvalMode);
     const latest = workspaceRef.current;
-    if (result?.output && latest) {
+    if (result && workerAnswer(result) && latest) {
       await commit({
         ...latest,
         conversations: latest.conversations.map((item) =>
@@ -339,7 +370,9 @@ export default function App() {
                         : result.status === "interrupted"
                           ? "interrupted"
                           : "failed",
-                    content: result.output,
+                    content: workerAnswer(result),
+                    durationMs: result.durationMs,
+                    workerRunId: result.id,
                     createdAt: new Date().toISOString(),
                   },
                 ],
@@ -370,7 +403,7 @@ export default function App() {
         </div>
         <BrandMark className="loading-logo" />
         <BrandWordmark theme={appearance.theme} />
-        <p>{error || "A abrir o teu espaço de trabalho..."}</p>
+        <p>{error ? localizeMessage(error) : t("Opening your workspace...")}</p>
       </div>
     );
 
@@ -378,19 +411,24 @@ export default function App() {
     (item) => item.id === environmentId,
   )!;
   const projects = workspace.projects.filter(
-    (item) => item.environmentId === environmentId,
+    (item) => item.environmentId === environmentId && !item.archived,
   );
-  const project = projects.find((item) => item.id === projectId);
-  const conversations = visibleConversations(
-    workspace,
-    environmentId,
-    mode,
-    projectId,
+  const project = workspace.projects.find(
+    (item) => item.id === projectId && item.environmentId === environmentId,
   );
-  const conversation = conversations.find((item) => item.id === conversationId);
-  const filteredConversations = conversations.filter((item) =>
-    item.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+  const conversation = workspace.conversations.find(
+    (item) =>
+      item.id === conversationId &&
+      item.environmentId === environmentId &&
+      item.mode === mode,
   );
+  const scopeArchived = conversation
+    ? isArchived(workspace, conversation)
+    : !!project?.archived;
+  const busyIds = [
+    activeRequest?.conversationId,
+    worker.active?.conversationId,
+  ].filter((id): id is string => !!id);
 
   function changeScope(
     nextEnvironmentId: string,
@@ -420,6 +458,7 @@ export default function App() {
   }
 
   function newConversation() {
+    if (scopeArchived) return;
     const next = createConversation(environmentId, mode, projectId);
     commit({
       ...workspace!,
@@ -431,6 +470,7 @@ export default function App() {
 
   async function saveMessage(event?: FormEvent) {
     event?.preventDefault();
+    if (scopeArchived) return;
     const content = draft.trim();
     if (
       !content ||
@@ -494,6 +534,8 @@ export default function App() {
   }
 
   function openDialog(value: Dialog) {
+    if (scopeArchived && ["memory", "projectPath"].includes(value || ""))
+      return;
     setFormName("");
     setFormPath(value === "projectPath" ? project?.path || "" : "");
     setFormColor("green");
@@ -564,13 +606,161 @@ export default function App() {
     setDialog(null);
   }
 
+  function targetBusy(target: SidebarTarget) {
+    return target.type === "conversation"
+      ? busyIds.includes(target.id)
+      : workspace!.conversations.some(
+          (item) => item.projectId === target.id && busyIds.includes(item.id),
+        );
+  }
+  function handleSidebarAction(target: SidebarTarget, action: SidebarAction) {
+    if (targetBusy(target)) return;
+    const latest = workspaceRef.current!;
+    const item =
+      target.type === "project"
+        ? latest.projects.find((item) => item.id === target.id)
+        : latest.conversations.find((item) => item.id === target.id);
+    if (!item || item.environmentId !== environmentId) return;
+    if (["rename", "move", "delete"].includes(action)) {
+      setManagement({
+        target,
+        action: action as "rename" | "move" | "delete",
+        value:
+          action === "rename"
+            ? "title" in item
+              ? item.title
+              : item.name
+            : "projectId" in item
+              ? item.projectId || ""
+              : "",
+      });
+      return;
+    }
+    if (action === "pin" || action === "archive") {
+      const key = action === "pin" ? "pinned" : "archived";
+      void commit(
+        target.type === "project"
+          ? {
+              ...latest,
+              projects: latest.projects.map((entry) =>
+                entry.id === target.id
+                  ? { ...entry, [key]: !entry[key] }
+                  : entry,
+              ),
+            }
+          : {
+              ...latest,
+              conversations: latest.conversations.map((entry) =>
+                entry.id === target.id
+                  ? { ...entry, [key]: !entry[key] }
+                  : entry,
+              ),
+            },
+      );
+      return;
+    }
+    if (target.type === "conversation" && action === "duplicate") {
+      const source = latest.conversations.find(
+        (item) => item.id === target.id,
+      )!;
+      if (
+        latest.projects.find((item) => item.id === source.projectId)?.archived
+      )
+        return;
+      const copy = duplicateConversation(source);
+      void commit({
+        ...latest,
+        conversations: [copy, ...latest.conversations],
+      });
+      changeScope(environmentId, copy.projectId, copy.mode, copy.id);
+      return;
+    }
+    if (target.type === "project") {
+      const targetProject = latest.projects.find(
+        (item) => item.id === target.id,
+      )!;
+      if (targetProject.archived) return;
+      if (action === "newChat" || action === "newTask") {
+        const copy = createConversation(
+          environmentId,
+          action === "newChat" ? "chat" : "worker",
+          target.id,
+        );
+        void commit({
+          ...latest,
+          conversations: [copy, ...latest.conversations],
+        });
+        changeScope(environmentId, target.id, copy.mode, copy.id);
+      } else {
+        changeScope(environmentId, target.id);
+        setFormText(targetProject.memory);
+        setFormPath(targetProject.path);
+        setDialog(action === "memory" ? "memory" : "projectPath");
+      }
+    }
+  }
+  function submitManagement() {
+    if (!management || targetBusy(management.target)) return;
+    const latest = workspaceRef.current!;
+    const { target, action, value } = management;
+    let next = latest;
+    if (action === "delete")
+      next =
+        target.type === "project"
+          ? removeProject(latest, target.id)
+          : removeConversation(latest, target.id);
+    else if (action === "rename") {
+      if (!value.trim()) return;
+      next =
+        target.type === "project"
+          ? {
+              ...latest,
+              projects: latest.projects.map((item) =>
+                item.id === target.id ? { ...item, name: value.trim() } : item,
+              ),
+            }
+          : {
+              ...latest,
+              conversations: latest.conversations.map((item) =>
+                item.id === target.id ? { ...item, title: value.trim() } : item,
+              ),
+            };
+    } else {
+      if (
+        value &&
+        !latest.projects.some(
+          (item) =>
+            item.id === value &&
+            item.environmentId === environmentId &&
+            !item.archived,
+        )
+      )
+        return;
+      next = {
+        ...latest,
+        conversations: latest.conversations.map((item) =>
+          item.id === target.id ? { ...item, projectId: value || null } : item,
+        ),
+      };
+    }
+    void commit(next);
+    setManagement(null);
+    if (
+      action === "delete" &&
+      (target.id === conversationId || target.id === projectId)
+    )
+      changeScope(environmentId, null);
+    else if (action === "move" && target.id === conversationId)
+      changeScope(environmentId, value || null, mode, conversationId);
+  }
+
   return (
     <div className="app-shell">
-      <nav className="environment-rail" aria-label="Ambientes">
+      <nav className="environment-rail" aria-label={t("Environments")}>
         <button
           className="brand-mark"
           title="Agent Workbench"
-          aria-label="Sobre o Agent Workbench"
+          aria-label={t("About Agent Workbench")}
           onClick={() => openDialog("settings")}
         >
           <BrandMark />
@@ -582,7 +772,7 @@ export default function App() {
               key={item.id}
               className={`environment-button ${item.color} ${item.id === environmentId ? "active" : ""}`}
               title={item.name}
-              aria-label={`Ambiente ${item.name}`}
+              aria-label={t("Environment {name}", { name: item.name })}
               aria-pressed={item.id === environmentId}
               onClick={() => changeScope(item.id, null)}
             >
@@ -592,18 +782,18 @@ export default function App() {
         </div>
         <button
           className="rail-add"
-          title="Criar ambiente"
-          aria-label="Criar ambiente"
+          title={t("Create environment")}
+          aria-label={t("Create environment")}
           onClick={() => openDialog("environment")}
         >
           <Plus size={23} />
         </button>
         <div className="rail-bottom">
-          <span className="local-indicator" title="Dados locais" />
+          <span className="local-indicator" title={t("Local data")} />
           <button
             className="avatar"
-            aria-label="Definições"
-            title="Definições"
+            aria-label={t("Settings")}
+            title={t("Settings")}
             onClick={() => openDialog("settings")}
           >
             <Settings2 size={18} />
@@ -618,123 +808,25 @@ export default function App() {
         >
           <span>
             {environment.name}
-            <small>O TEU AMBIENTE</small>
+            <small>{t("YOUR ENVIRONMENT")}</small>
           </span>
           <Settings2 size={16} />
         </button>
         <div className="sidebar-body">
-          <button className="new-button" onClick={newConversation}>
-            <Plus size={17} />
-            {mode === "chat" ? "Nova conversa" : "Nova tarefa"}
-            <span aria-hidden="true">+</span>
-          </button>
-          <div className="mode-tabs" aria-label="Tipo de conversa">
-            <button
-              className={mode === "chat" ? "selected" : ""}
-              aria-pressed={mode === "chat"}
-              onClick={() => changeScope(environmentId, projectId, "chat")}
-            >
-              <MessageSquare size={15} />
-              Chat
-            </button>
-            <button
-              className={mode === "worker" ? "selected" : ""}
-              aria-pressed={mode === "worker"}
-              onClick={() => changeScope(environmentId, projectId, "worker")}
-            >
-              <Code2 size={16} />
-              Worker
-            </button>
-          </div>
-          <label className="search">
-            <Search size={15} />
-            <input
-              aria-label="Pesquisar conversas"
-              placeholder="Pesquisar neste espaço"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <span>⌕</span>
-          </label>
-          <div className="section-label">
-            <span>ESPAÇO DE TRABALHO</span>
-          </div>
-          <button
-            className={`project-row ${!projectId ? "selected" : ""}`}
-            onClick={() => changeScope(environmentId, null)}
-          >
-            <Hash size={17} />
-            Geral
-            <span>
-              {workspace.conversations.filter(
-                (item) =>
-                  item.environmentId === environmentId &&
-                  item.mode === mode &&
-                  !item.projectId,
-              ).length || ""}
-            </span>
-          </button>
-          <div className="section-label project-label">
-            <span>PROJETOS</span>
-            <button
-              title="Criar projeto"
-              aria-label="Criar projeto"
-              onClick={() => openDialog("project")}
-            >
-              <Plus size={15} />
-            </button>
-          </div>
-          {projects.map((item) => (
-            <button
-              key={item.id}
-              className={`project-row ${projectId === item.id ? "selected" : ""}`}
-              onClick={() => changeScope(environmentId, item.id)}
-            >
-              <Folder size={16} />
-              <span className="project-name">{item.name}</span>
-              {projectId === item.id && <span className="small-dot" />}
-            </button>
-          ))}
-          {!projects.length && (
-            <button
-              className="empty-project"
-              onClick={() => openDialog("project")}
-            >
-              <FolderPlus size={16} />
-              <span>Adiciona o primeiro projeto</span>
-            </button>
-          )}
-          <div className="section-label conversations-label">
-            <span>{mode === "chat" ? "CONVERSAS" : "TAREFAS"}</span>
-            <span>{conversations.length.toString().padStart(2, "0")}</span>
-          </div>
-          <div className="conversation-list">
-            {filteredConversations.map((item) => (
-              <button
-                key={item.id}
-                className={`conversation-row ${conversationId === item.id ? "selected" : ""}`}
-                onClick={() => {
-                  changeScope(environmentId, projectId, mode, item.id);
-                }}
-              >
-                {mode === "chat" ? (
-                  <MessageSquare size={14} />
-                ) : (
-                  <Code2 size={14} />
-                )}
-                <span>{item.title}</span>
-              </button>
-            ))}
-            {!filteredConversations.length && (
-              <p className="sidebar-empty">
-                {query
-                  ? "Sem resultados."
-                  : mode === "chat"
-                    ? "As tuas conversas ficam aqui."
-                    : "As tuas tarefas ficam aqui."}
-              </p>
-            )}
-          </div>
+          <WorkspaceSidebar
+            workspace={workspace}
+            environmentId={environmentId}
+            mode={mode}
+            projectId={projectId}
+            conversationId={conversationId}
+            query={query}
+            onQuery={setQuery}
+            onScope={changeScope}
+            onNew={newConversation}
+            onProject={() => openDialog("project")}
+            onAction={handleSidebarAction}
+            busyIds={busyIds}
+          />
         </div>
         <button
           className="sidebar-footer"
@@ -747,8 +839,8 @@ export default function App() {
             OpenAI
             <small>
               {openai.account?.connected
-                ? openai.account.email
-                : "Conta por ligar"}
+                ? t(openai.account.email)
+                : t("Account not connected")}
             </small>
           </span>
           <Settings2 size={16} />
@@ -760,22 +852,22 @@ export default function App() {
           <div className="breadcrumb">
             <span>{environment.name}</span>
             <ChevronRight size={14} />
-            <span>{project?.name || "Geral"}</span>
+            <span>{project?.name || t("General")}</span>
             <ChevronRight size={14} />
-            <strong>{mode === "chat" ? "Chat" : "Worker"}</strong>
+            <strong>{mode === "chat" ? t("Chat") : t("Worker")}</strong>
           </div>
           <div className="topbar-actions">
             <button
               className="icon-button theme-toggle"
               aria-label={
                 appearance.theme === "dark"
-                  ? "Ativar tema claro"
-                  : "Ativar tema escuro"
+                  ? t("Switch to light theme")
+                  : t("Switch to dark theme")
               }
               title={
                 appearance.theme === "dark"
-                  ? "Ativar tema claro"
-                  : "Ativar tema escuro"
+                  ? t("Switch to light theme")
+                  : t("Switch to dark theme")
               }
               onClick={() =>
                 appearance.selectTheme(
@@ -791,12 +883,12 @@ export default function App() {
             </button>
             <span className="local-badge">
               <span />
-              Local
+              {t("Local")}
             </span>
             <button
               className="icon-button"
-              title={rightPanel ? "Ocultar contexto" : "Mostrar contexto"}
-              aria-label="Alternar painel de contexto"
+              title={rightPanel ? t("Hide context") : t("Show context")}
+              aria-label={t("Toggle context panel")}
               onClick={() => setRightPanel(!rightPanel)}
             >
               {rightPanel ? (
@@ -810,16 +902,16 @@ export default function App() {
         </header>
         {error && (
           <div className="error-banner" role="alert">
-            <span>{error}</span>
+            <span>{localizeMessage(error)}</span>
             <div>
-              {saveStatus === "Alterações por guardar" && (
+              {saveStatus === "Unsaved changes" && (
                 <button onClick={() => commit(workspace)}>
-                  Tentar guardar novamente
+                  {t("Try saving again")}
                 </button>
               )}
               <button
                 className="icon-button"
-                aria-label="Fechar aviso"
+                aria-label={t("Dismiss notice")}
                 onClick={() => setError("")}
               >
                 <X size={16} />
@@ -829,8 +921,7 @@ export default function App() {
         )}
         {!isTauri() && (
           <div className="preview-banner">
-            Pré-visualização da interface. Os dados desta janela não são
-            guardados.
+            {t("Interface preview. Data in this window is not saved.")}
           </div>
         )}
         <div className="main-content">
@@ -862,57 +953,64 @@ export default function App() {
                   </div>
                   <h1>
                     {mode === "chat"
-                      ? "Uma ideia começa aqui."
-                      : "Das ideias ao próximo commit."}
+                      ? t("An idea starts here.")
+                      : t("From ideas to the next commit.")}
                   </h1>
                   <p>
                     {mode === "chat"
-                      ? "Pensa em voz alta, explora possibilidades e organiza o que vem a seguir."
-                      : "Prepara uma tarefa, reúne o contexto e define o que queres construir."}
+                      ? t(
+                          "Think out loud, explore possibilities and plan what comes next.",
+                        )
+                      : t(
+                          "Prepare a task, gather context and define what you want to build.",
+                        )}
                   </p>
                   <div className="suggestions">
                     {(mode === "chat"
                       ? [
                           {
                             icon: Sparkles,
-                            title: "Explorar uma ideia",
-                            text: "Transformar uma ideia num plano",
-                            prompt: "Quero explorar uma ideia: ",
+                            title: t("Explore an idea"),
+                            text: t("Turn an idea into a plan"),
+                            prompt: t("I want to explore an idea: "),
                           },
                           {
                             icon: Layers3,
-                            title: "Pensar na arquitetura",
-                            text: "Organizar as peças de um projeto",
-                            prompt: "Quero planear a arquitetura de ",
+                            title: t("Think about architecture"),
+                            text: t("Organize the parts of a project"),
+                            prompt: t("I want to plan the architecture of "),
                           },
                           {
                             icon: StickyNote,
-                            title: "Organizar o contexto",
-                            text: "Registar decisões para continuar",
-                            prompt: "Decisões e contexto que quero guardar:\n",
+                            title: t("Organize context"),
+                            text: t("Record decisions for later"),
+                            prompt: t("Decisions and context to save:\n"),
                           },
                         ]
                       : [
                           {
                             icon: Code2,
-                            title: "Preparar uma feature",
-                            text: "Definir objetivo e critérios de aceitação",
-                            prompt:
-                              "Feature a implementar:\n\nObjetivo:\n\nCritérios de aceitação:\n",
+                            title: t("Prepare a feature"),
+                            text: t("Define the goal and acceptance criteria"),
+                            prompt: t(
+                              "Feature to implement:\n\nGoal:\n\nAcceptance criteria:\n",
+                            ),
                           },
                           {
                             icon: Search,
-                            title: "Investigar um problema",
-                            text: "Registar sintomas e resultado esperado",
-                            prompt:
-                              "Problema a investigar:\n\nComportamento atual:\n\nResultado esperado:\n",
+                            title: t("Investigate a problem"),
+                            text: t("Record symptoms and expected results"),
+                            prompt: t(
+                              "Problem to investigate:\n\nCurrent behavior:\n\nExpected result:\n",
+                            ),
                           },
                           {
                             icon: ShieldCheck,
-                            title: "Planear a verificação",
-                            text: "Definir como validar as alterações",
-                            prompt:
-                              "Plano de verificação:\n\nComportamentos a testar:\n",
+                            title: t("Plan verification"),
+                            text: t("Define how to validate changes"),
+                            prompt: t(
+                              "Verification plan:\n\nBehaviors to test:\n",
+                            ),
                           },
                         ]
                     ).map((item) => (
@@ -932,66 +1030,129 @@ export default function App() {
                   </div>
                   <div className="welcome-footnote">
                     <LockKeyhole size={13} />
-                    {environment.name} tem o seu próprio histórico e memória.
+                    {t("{name} has its own history and memory.", {
+                      name: environment.name,
+                    })}
                   </div>
                 </div>
               ) : (
                 <div className="messages">
                   <div className="conversation-title">
-                    <span>{mode === "chat" ? "CONVERSA" : "TAREFA"}</span>
+                    <span>
+                      {mode === "chat" ? t("CONVERSATION") : t("TASK")}
+                    </span>
                     <h1>{conversation.title}</h1>
                     {conversation.sourceId && (
                       <p>
-                        Contexto copiado de um Chat deste ambiente. A conversa
-                        original foi preservada.
+                        {t(
+                          "Context copied from a Chat in this environment. The original conversation was preserved.",
+                        )}
                       </p>
                     )}
                   </div>
                   {conversation.messages.map((message) => (
-                    <article className="message" key={message.id}>
-                      <div className="message-avatar">
-                        {message.role === "assistant" ? <BrandMark /> : "TU"}
-                      </div>
-                      <div>
-                        <div className="message-meta">
-                          <strong>
-                            {message.role === "assistant" ? "OpenAI" : "Tu"}
-                          </strong>
-                          <time>
-                            {new Date(message.createdAt).toLocaleTimeString(
-                              "pt-PT",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )}
-                          </time>
-                          <span>
-                            {message.status === "interrupted"
-                              ? "Resposta interrompida"
-                              : message.status === "failed"
-                                ? "Resposta incompleta"
-                                : "Guardado localmente"}
-                          </span>
+                    <Fragment key={message.id}>
+                      <article
+                        data-status={message.status || "completed"}
+                        className={`message ${message.role === "assistant" ? "assistant-message" : "user-message"}`}
+                      >
+                        <div className="message-avatar">
+                          {message.role === "assistant" ? (
+                            <BrandMark />
+                          ) : (
+                            t("YOU")
+                          )}
                         </div>
-                        {message.role === "assistant" ? (
-                          <MessageContent content={message.content} />
-                        ) : (
-                          <p>{message.content}</p>
+                        <div>
+                          <div className="message-meta">
+                            <strong>
+                              {message.role === "assistant"
+                                ? "OpenAI"
+                                : t("You")}
+                            </strong>
+                            <time>
+                              {new Date(message.createdAt).toLocaleTimeString(
+                                dateLocale(),
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                            </time>
+                            <span>
+                              {message.status === "interrupted"
+                                ? t("Response interrupted")
+                                : message.status === "failed"
+                                  ? t("Incomplete response")
+                                  : t("Saved locally")}
+                            </span>
+                          </div>
+                          {message.role === "assistant" ? (
+                            <>
+                              {(!message.workerRunId ||
+                                !worker.history.some(
+                                  (run) => run.id === message.workerRunId,
+                                )) &&
+                                (message.durationMs != null ||
+                                  message.summary) && (
+                                  <ActivityIndicator
+                                    startedAt={0}
+                                    active={false}
+                                    durationMs={message.durationMs}
+                                    summary={message.summary}
+                                  />
+                                )}
+                              <MessageContent content={message.content} />
+                            </>
+                          ) : (
+                            <p>{message.content}</p>
+                          )}
+                        </div>
+                      </article>
+                      {mode === "worker" &&
+                        worker.history
+                          .filter(
+                            (run) =>
+                              run.userMessageId === message.id &&
+                              run.id !== worker.active?.id,
+                          )
+                          .map((run) => (
+                            <RunActivity
+                              key={run.id}
+                              run={run}
+                              active={false}
+                              worker={worker}
+                            />
+                          ))}
+                      {mode === "worker" &&
+                        worker.active?.conversationId === conversation.id &&
+                        worker.active.userMessageId === message.id && (
+                          <RunActivity
+                            run={worker.active}
+                            active
+                            worker={worker}
+                          />
                         )}
-                      </div>
-                    </article>
+                    </Fragment>
                   ))}
                   {activeRequest?.conversationId === conversation.id && (
-                    <article className="message" aria-live="polite">
+                    <article
+                      className="message assistant-message"
+                      aria-live="polite"
+                    >
                       <div className="message-avatar">
                         <BrandMark />
                       </div>
                       <div>
                         <div className="message-meta">
                           <strong>OpenAI</strong>
-                          <span>A responder...</span>
+                          <span>{t("Responding...")}</span>
                         </div>
+                        <ActivityIndicator
+                          active
+                          startedAt={activeRequest.startedAt}
+                          summary={activeRequest.summary}
+                        />
                         <MessageContent
                           content={
-                            activeRequest.text || "A preparar a resposta..."
+                            activeRequest.text || t("Preparing the response...")
                           }
                         />
                       </div>
@@ -1001,12 +1162,14 @@ export default function App() {
                     <div className="pending-note">
                       <Cpu size={17} />
                       <span>
-                        Mensagem guardada. Liga a conta deste ambiente para
-                        receber respostas.
+                        {t(
+                          "Message saved. Connect this environment's account to receive responses.",
+                        )}
                       </span>
                     </div>
                   )}
                   {mode === "chat" &&
+                    !scopeArchived &&
                     openai.account?.eligible &&
                     openai.model &&
                     !activeRequest && (
@@ -1014,17 +1177,17 @@ export default function App() {
                         className="text-button"
                         onClick={() => requestResponse(conversation)}
                       >
-                        Pedir resposta à OpenAI
+                        {t("Request a response from OpenAI")}
                         <ArrowRight size={14} />
                       </button>
                     )}
-                  {mode === "worker" && (
+                  {mode === "worker" && !scopeArchived && (
                     <>
                       {!project && (
                         <label className="field worker-assign">
-                          Projeto da tarefa
+                          {t("Task project")}
                           <select
-                            aria-label="Projeto da tarefa"
+                            aria-label={t("Task project")}
                             value=""
                             disabled={!!worker.active}
                             onChange={async (event) => {
@@ -1050,7 +1213,7 @@ export default function App() {
                                 );
                             }}
                           >
-                            <option value="">Selecionar projeto</option>
+                            <option value="">{t("Select project")}</option>
                             {projects.map((item) => (
                               <option key={item.id} value={item.id}>
                                 {item.name}
@@ -1062,6 +1225,7 @@ export default function App() {
                       <WorkerPanel
                         worker={worker}
                         conversationId={conversation.id}
+                        inlineOnly
                         projectPath={project?.path}
                         onEditPath={
                           project ? () => openDialog("projectPath") : undefined
@@ -1081,21 +1245,32 @@ export default function App() {
                         onClick={() => executeWorker(conversation)}
                       >
                         <Cpu size={15} />
-                        Executar tarefa
+                        {t("Run task")}
                       </button>
                     </>
                   )}
                   {mode === "chat" && (
                     <button
                       className="handoff-button"
-                      disabled={!!activeRequest}
+                      disabled={!!activeRequest || scopeArchived}
                       onClick={handoff}
                     >
                       <Code2 size={16} />
-                      Criar tarefa a partir desta conversa
+                      {t("Create a task from this conversation")}
                       <ArrowRight size={15} />
                     </button>
                   )}
+                  {mode === "worker" &&
+                    worker.history
+                      .filter((run) => !run.userMessageId)
+                      .map((run) => (
+                        <RunActivity
+                          key={run.id}
+                          run={run}
+                          active={false}
+                          worker={worker}
+                        />
+                      ))}
                   <div ref={endRef} />
                 </div>
               )}
@@ -1109,23 +1284,44 @@ export default function App() {
                     endRef.current?.scrollIntoView({ behavior: "auto" });
                   }}
                 >
-                  Ir para a última mensagem
+                  {t("Go to the latest message")}
                   <ArrowRight size={13} />
                 </button>
               </div>
             )}
             <div className="composer-container">
+              {scopeArchived && (
+                <div className="archived-notice" role="status">
+                  <span>
+                    {t(
+                      "This conversation is archived. Restore it to continue.",
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSidebarAction(
+                        project?.archived
+                          ? { type: "project", id: project.id }
+                          : { type: "conversation", id: conversation!.id },
+                        "archive",
+                      )
+                    }
+                  >
+                    {t("Restore")}
+                  </button>
+                </div>
+              )}
               {activeRequest &&
                 activeRequest.conversationId !== conversationId && (
                   <div className="running-notice">
                     <span>
-                      Há uma resposta em curso no ambiente{" "}
-                      {
-                        workspace.environments.find(
-                          (item) => item.id === activeRequest.environmentId,
-                        )?.name
-                      }
-                      .
+                      {t("A response is in progress in {name}.", {
+                        name:
+                          workspace.environments.find(
+                            (item) => item.id === activeRequest.environmentId,
+                          )?.name || "",
+                      })}
                     </span>
                     <button
                       onClick={() => {
@@ -1142,7 +1338,7 @@ export default function App() {
                         }
                       }}
                     >
-                      Ver conversa
+                      {t("View conversation")}
                       <ArrowRight size={13} />
                     </button>
                   </div>
@@ -1161,11 +1357,11 @@ export default function App() {
                 worker.active.conversationId !== conversationId && (
                   <div className="running-notice">
                     <span>
-                      Há uma tarefa Codex em curso
-                      {worker.active.status === "awaitingApproval"
-                        ? " à espera da tua aprovação"
-                        : ""}
-                      .
+                      {t(
+                        worker.active.status === "awaitingApproval"
+                          ? "A Codex task is waiting for your approval."
+                          : "A Codex task is running.",
+                      )}
                     </span>
                     <button
                       onClick={() => {
@@ -1181,7 +1377,7 @@ export default function App() {
                           );
                       }}
                     >
-                      Ver tarefa
+                      {t("View task")}
                       <ArrowRight size={13} />
                     </button>
                   </div>
@@ -1192,42 +1388,45 @@ export default function App() {
                 <span className="notice-dot" />
                 <span>
                   {openai.account?.connected
-                    ? openai.account.email
-                    : "Conta por ligar"}
+                    ? t(openai.account.email)
+                    : t("Account not connected")}
                 </span>
                 <span className="notice-divider">·</span>
                 <span>
                   {mode === "worker"
                     ? worker.runtime?.ready
-                      ? "Codex isolado por projeto"
-                      : "Prepara o Worker nas definições"
+                      ? t("Codex isolated by project")
+                      : t("Set up Worker in settings")
                     : openai.account?.eligible
-                      ? "Chat com a tua subscrição"
-                      : "Liga a tua subscrição ChatGPT"}
+                      ? t("Chat with your subscription")
+                      : t("Connect your ChatGPT subscription")}
                 </span>
                 <button onClick={() => openDialog("settings")}>
-                  {openai.account?.connected ? "Gerir conta" : "Ligar conta"}
+                  {openai.account?.connected
+                    ? t("Manage account")
+                    : t("Connect account")}
                   <ArrowRight size={12} />
                 </button>
               </div>
               {openai.issue && (
                 <p className="account-issue" role="status">
-                  {openai.issue}
+                  {localizeMessage(openai.issue)}
                 </p>
               )}
               <form className="composer" onSubmit={saveMessage}>
                 <textarea
                   ref={composerRef}
+                  disabled={scopeArchived}
                   aria-label={
-                    mode === "chat" ? "Mensagem" : "Descrição da tarefa"
+                    mode === "chat" ? t("Message") : t("Task description")
                   }
                   maxLength={100_000}
                   placeholder={
                     mode === "chat"
                       ? openai.account?.eligible
-                        ? "O que vamos criar hoje?"
-                        : "Escreve uma ideia ou guarda contexto para mais tarde..."
-                      : "Descreve o que queres construir..."
+                        ? t("What shall we create today?")
+                        : t("Write an idea or save context for later...")
+                      : t("Describe what you want to build...")
                   }
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
@@ -1249,13 +1448,39 @@ export default function App() {
                     onClick={() => openDialog("memory")}
                   >
                     <Plus size={16} />
-                    <span>Contexto</span>
+                    <span>{t("Context")}</span>
                   </button>
                   <div className="composer-controls">
+                    {mode === "worker" && (
+                      <label
+                        className="approval-mode-picker"
+                        title={t(
+                          approvalMode === "auto"
+                            ? "Automatically review low-risk actions. Ask before potentially unsafe actions."
+                            : "Ask before commands and file changes that require approval.",
+                        )}
+                      >
+                        <ShieldCheck size={14} />
+                        <select
+                          aria-label={t("Approval mode")}
+                          value={approvalMode}
+                          disabled={!!worker.active || scopeArchived}
+                          onChange={(event) => {
+                            const value =
+                              event.target.value === "auto" ? "auto" : "ask";
+                            setApprovalMode(value);
+                            saveApprovalMode(value);
+                          }}
+                        >
+                          <option value="ask">{t("Ask for approval")}</option>
+                          <option value="auto">{t("Approve for me")}</option>
+                        </select>
+                      </label>
+                    )}
                     {openai.account?.eligible ? (
                       <select
                         className="model-picker"
-                        aria-label="Modelo"
+                        aria-label={t("Model")}
                         disabled={
                           openai.loadingModels ||
                           !!activeRequest ||
@@ -1268,8 +1493,8 @@ export default function App() {
                       >
                         <option value="" disabled>
                           {openai.loadingModels
-                            ? "A obter modelos..."
-                            : "Selecionar modelo"}
+                            ? t("Loading models...")
+                            : t("Select model")}
                         </option>
                         {openai.models.map((model) => (
                           <option key={model.slug} value={model.slug}>
@@ -1284,7 +1509,9 @@ export default function App() {
                         onClick={() => openDialog("settings")}
                       >
                         <Bot size={14} />
-                        {mode === "chat" ? "Ligar OpenAI" : "Configurar Worker"}
+                        {mode === "chat"
+                          ? t("Connect OpenAI")
+                          : t("Set up Worker")}
                       </button>
                     )}
                     {worker.active ? (
@@ -1293,7 +1520,7 @@ export default function App() {
                         className="stop-button"
                         onClick={worker.cancel}
                       >
-                        Parar tarefa
+                        {t("Stop task")}
                       </button>
                     ) : activeRequest ? (
                       <button
@@ -1301,26 +1528,26 @@ export default function App() {
                         className="stop-button"
                         onClick={cancelResponse}
                       >
-                        Parar
+                        {t("Stop")}
                       </button>
                     ) : (
                       <button
                         className="send-button"
                         type="submit"
-                        disabled={!draft.trim()}
+                        disabled={!draft.trim() || scopeArchived}
                         title={
                           mode === "chat" &&
                           openai.account?.eligible &&
                           openai.model
-                            ? "Enviar mensagem"
-                            : "Guardar mensagem localmente"
+                            ? t("Send message")
+                            : t("Save message locally")
                         }
                         aria-label={
                           mode === "chat" &&
                           openai.account?.eligible &&
                           openai.model
-                            ? "Enviar mensagem"
-                            : "Guardar mensagem localmente"
+                            ? t("Send message")
+                            : t("Save message locally")
                         }
                       >
                         <ArrowUp size={19} />
@@ -1332,9 +1559,9 @@ export default function App() {
               <div className="composer-footnote">
                 <span>
                   <ShieldCheck size={12} />
-                  {saveStatus}
+                  {t(saveStatus)}
                 </span>
-                <span>Enter para enviar · Shift + Enter para nova linha</span>
+                <span>{t("Enter to send · Shift + Enter for a new line")}</span>
               </div>
             </div>
           </div>
@@ -1342,7 +1569,7 @@ export default function App() {
           {rightPanel && (
             <aside className="context-panel">
               <div className="context-heading">
-                <span>Contexto</span>
+                <span>{t("Context")}</span>
                 <span className="section-chip">
                   {mode === "chat" ? "CHAT" : "WORKER"}
                 </span>
@@ -1350,7 +1577,7 @@ export default function App() {
               <div className="context-section">
                 <div className="context-label">
                   <Layers3 size={14} />
-                  AMBIENTE
+                  {t("ENVIRONMENT")}
                 </div>
                 <div className="environment-card">
                   <div className={`context-env-icon ${environment.color}`}>
@@ -1358,7 +1585,7 @@ export default function App() {
                   </div>
                   <div>
                     <strong>{environment.name}</strong>
-                    <span>Histórico separado</span>
+                    <span>{t("Separate history")}</span>
                   </div>
                   <LockKeyhole size={14} />
                 </div>
@@ -1366,10 +1593,12 @@ export default function App() {
               <div className="context-section">
                 <div className="context-label">
                   <StickyNote size={14} />
-                  {project ? "MEMÓRIA DO PROJETO" : "INSTRUÇÕES DO AMBIENTE"}
+                  {project
+                    ? t("PROJECT MEMORY")
+                    : t("ENVIRONMENT INSTRUCTIONS")}
                   <button
-                    title="Editar contexto"
-                    aria-label="Editar contexto"
+                    title={t("Edit context")}
+                    aria-label={t("Edit context")}
                     onClick={() => openDialog("memory")}
                   >
                     <Plus size={14} />
@@ -1377,15 +1606,17 @@ export default function App() {
                 </div>
                 <p className="memory-preview">
                   {(project ? project.memory : environment.instructions) ||
-                    "Adiciona preferências e decisões que queres manter neste espaço."}
+                    t(
+                      "Add preferences and decisions to keep in this workspace.",
+                    )}
                 </p>
                 <button
                   className="text-button"
                   onClick={() => openDialog("memory")}
                 >
                   {(project ? project.memory : environment.instructions)
-                    ? "Editar contexto"
-                    : "Adicionar contexto"}
+                    ? t("Edit context")
+                    : t("Add context")}
                   <ArrowRight size={13} />
                 </button>
               </div>
@@ -1393,62 +1624,66 @@ export default function App() {
                 <div className="context-section">
                   <div className="context-label">
                     <Folder size={14} />
-                    PROJETO
+                    {t("PROJECT")}
                   </div>
                   <strong className="project-detail">{project.name}</strong>
                   <p className="path-detail">
-                    {project.path || "Sem pasta associada"}
+                    {project.path || t("No folder linked")}
                   </p>
                   <span className="subtle">
                     {mode === "worker"
-                      ? "Apenas esta pasta fica disponível durante a execução."
-                      : "O Chat não tem acesso aos ficheiros locais."}
+                      ? t("Only this folder is available during execution.")
+                      : t("Chat cannot access local files.")}
                   </span>
                 </div>
               )}
               <div className="context-section">
                 <div className="context-label">
                   <Cpu size={14} />
-                  CONTA DESTE AMBIENTE
+                  {t("THIS ENVIRONMENT'S ACCOUNT")}
                 </div>
                 <button
                   className="provider-card"
                   onClick={() => openDialog("settings")}
-                  aria-label="Gerir conta deste ambiente"
+                  aria-label={t("Manage this environment's account")}
                 >
                   <Bot size={20} />
                   <div>
                     <strong>OpenAI</strong>
                     <span>
                       {openai.account?.connected
-                        ? openai.account.email
-                        : "Sem conta ligada"}
+                        ? t(openai.account.email)
+                        : t("No account connected")}
                     </span>
                   </div>
                   <span className="pending-chip">
                     {openai.account?.eligible
-                      ? "Ligada"
+                      ? t("Connected")
                       : openai.account?.connected
-                        ? "Autorizar"
-                        : "Ligar"}
+                        ? t("Authorize")
+                        : t("Connect")}
                   </span>
                 </button>
                 <p className="subtle">
                   {lastUsage?.environmentId === environmentId
-                    ? `Última resposta: ${lastUsage.input} tokens de entrada e ${lastUsage.output} de saída.`
-                    : "A conta é associada apenas a este ambiente."}
+                    ? t(
+                        "Last response: {input} input tokens and {output} output tokens.",
+                        { input: lastUsage.input, output: lastUsage.output },
+                      )
+                    : t("The account is linked only to this environment.")}
                 </p>
               </div>
               <div className="context-bottom">
                 <ShieldCheck size={18} />
-                <strong>O contexto fica no seu lugar.</strong>
+                <strong>{t("Context stays in its place.")}</strong>
                 <p>
-                  Chat e Worker têm históricos separados. A passagem de contexto
-                  é sempre uma escolha tua.
+                  {t(
+                    "Chat and Worker have separate histories. Sharing context is always your choice.",
+                  )}
                 </p>
                 <button onClick={() => openDialog("settings")}>
                   <CircleHelp size={13} />
-                  Sobre esta versão
+                  {t("About this version")}
                 </button>
               </div>
             </aside>
@@ -1475,7 +1710,7 @@ export default function App() {
           >
             <button
               className="modal-close icon-button"
-              aria-label="Fechar"
+              aria-label={t("Close")}
               onClick={() => setDialog(null)}
             >
               <X size={19} />
@@ -1500,16 +1735,16 @@ export default function App() {
             )}
             <h2 id="dialog-title">
               {dialog === "environment"
-                ? "Um novo ambiente"
+                ? t("A new environment")
                 : dialog === "project"
-                  ? "Adicionar projeto"
+                  ? t("Add project")
                   : dialog === "projectPath"
-                    ? "Pasta do projeto"
+                    ? t("Project folder")
                     : dialog === "memory"
                       ? project
-                        ? "Memória do projeto"
-                        : "Instruções do ambiente"
-                      : "A tua conta, neste ambiente"}
+                        ? t("Project memory")
+                        : t("Environment instructions")
+                      : t("Your account in this environment")}
             </h2>
             {dialog === "settings" ? (
               <>
@@ -1517,8 +1752,9 @@ export default function App() {
                   <span className={`settings-environment ${environment.color}`}>
                     {environment.name}
                   </span>{" "}
-                  Os outros ambientes mantêm as suas próprias contas.
+                  {t("Other environments keep their own accounts.")}
                 </p>
+                <LanguageSwitcher />
                 <ThemeSwitcher
                   value={appearance.preference}
                   onChange={appearance.selectTheme}
@@ -1532,37 +1768,41 @@ export default function App() {
                   <div>
                     <strong>
                       {openai.account?.connected
-                        ? openai.account.email
-                        : "Ligar a tua subscrição ChatGPT"}
+                        ? t(openai.account.email)
+                        : t("Connect your ChatGPT subscription")}
                     </strong>
                     <p>
                       {openai.account?.eligible
-                        ? "Conta ligada. Os modelos disponíveis aparecem no seletor do Chat."
-                        : "Liga a tua conta no navegador para usar a subscrição, quando elegível. As conversas oficiais ficam no ChatGPT."}
+                        ? t(
+                            "Account connected. Available models appear in the Chat selector.",
+                          )
+                        : t(
+                            "Connect your account in the browser to use your subscription, if eligible. Official conversations stay in ChatGPT.",
+                          )}
                     </p>
                   </div>
                 </div>
                 {openai.issue && (
                   <p className="account-issue" role="status">
-                    {openai.issue}
+                    {localizeMessage(openai.issue)}
                   </p>
                 )}
                 <div className="account-actions">
                   {openai.loginEnvironment ? (
                     <>
-                      <p>Aguarda a conclusão do login no navegador.</p>
+                      <p>{t("Wait for login to finish in the browser.")}</p>
                       <button
                         className="secondary-button"
                         onClick={openai.cancelLogin}
                       >
-                        Cancelar login
+                        {t("Cancel login")}
                       </button>
                     </>
                   ) : (
                     <button className="primary-button" onClick={openai.login}>
                       {openai.account?.connected
-                        ? "Renovar autorização"
-                        : "Continue with ChatGPT"}
+                        ? t("Renew authorization")
+                        : t("Continue with ChatGPT")}
                     </button>
                   )}
                   {openai.account?.connected && (
@@ -1573,78 +1813,86 @@ export default function App() {
                         onClick={openai.logout}
                       >
                         {openai.disconnecting
-                          ? "A desligar..."
-                          : "Desligar conta"}
+                          ? t("Disconnecting...")
+                          : t("Disconnect account")}
                       </button>
                       <button
                         className="text-button"
                         onClick={openai.reloadModels}
                       >
-                        Atualizar modelos
+                        {t("Refresh models")}
                       </button>
                     </>
                   )}
                 </div>
                 {openai.account?.connected && !openai.account.eligible && (
                   <p className="account-issue">
-                    A conta iniciou sessão, mas não concedeu a permissão
-                    necessária para usar a subscrição. Renova a autorização e
-                    verifica a elegibilidade da conta e do workspace.
+                    {t(
+                      "The account signed in but did not grant permission to use the subscription. Renew authorization and check account and workspace eligibility.",
+                    )}
                   </p>
                 )}
                 <div className="settings-privacy">
                   <ShieldCheck size={17} />
                   <p>
-                    {openai.account?.connected
-                      ? "A conta está ligada apenas a "
-                      : "Ao ligares uma conta, ela fica associada apenas a "}
-                    <strong>{environment.name}</strong>. Para usar outra conta,
-                    escolhe outro ambiente.
+                    {t(
+                      openai.account?.connected
+                        ? "The account is connected only to {name}. To use another account, choose another environment."
+                        : "When you connect an account, it is linked only to {name}. To use another account, choose another environment.",
+                      { name: environment.name },
+                    )}
                   </p>
                 </div>
                 <DesktopIntegration />
                 <WorkerSetup worker={worker} />
                 {worker.issue && (
                   <p className="account-issue" role="alert">
-                    {worker.issue}
+                    {localizeMessage(worker.issue)}
                   </p>
                 )}
                 <details className="settings-details">
-                  <summary>Privacidade e sobre esta versão</summary>
+                  <summary>{t("Privacy and about this version")}</summary>
                   <p>
-                    As credenciais ficam protegidas no teu computador. O
-                    histórico é local, separado por ambiente e modo. O Chat
-                    recebe a conversa atual e o contexto que guardaste neste
-                    espaço.
+                    {t(
+                      "Credentials are protected on your computer. History is local and separated by environment and mode. Chat receives the current conversation and the context saved in this workspace.",
+                    )}
                   </p>
                   <p>
-                    Agent Workbench {appVersion} · Chat e Codex Worker com histórico
-                    local. O Worker altera diretamente os ficheiros da pasta
-                    selecionada. Parar uma tarefa não desfaz alterações já
-                    realizadas.
+                    {t(
+                      "Agent Workbench {version} · Chat and Codex Worker with local history. Worker modifies files directly in the selected folder. Stopping a task does not undo changes already made.",
+                      { version: appVersion },
+                    )}
                   </p>
                 </details>
                 <button
                   className="primary-button full-width"
                   onClick={() => setDialog(null)}
                 >
-                  Concluir
+                  {t("Done")}
                 </button>
               </>
             ) : (
               <form onSubmit={submitDialog}>
                 <p className="modal-description">
                   {dialog === "environment"
-                    ? "Mantém projetos, conversas e instruções num espaço próprio."
+                    ? t(
+                        "Keep projects, conversations and instructions in their own workspace.",
+                      )
                     : dialog === "projectPath"
-                      ? "Esta será a única pasta do computador disponível para as tarefas deste projeto."
+                      ? t(
+                          "This is the only folder on your computer available to tasks in this project.",
+                        )
                       : dialog === "project"
-                        ? `Este projeto ficará no ambiente ${environment.name}.`
-                        : "Guarda apenas informação adequada a este espaço. Não incluas credenciais ou segredos."}
+                        ? t("This project will belong to {name}.", {
+                            name: environment.name,
+                          })
+                        : t(
+                            "Save only information appropriate for this workspace. Do not include credentials or secrets.",
+                          )}
                 </p>
                 {(dialog === "environment" || dialog === "project") && (
                   <label className="field">
-                    Nome
+                    {t("Name")}
                     <input
                       autoFocus
                       required
@@ -1652,8 +1900,8 @@ export default function App() {
                       value={formName}
                       placeholder={
                         dialog === "environment"
-                          ? "Ex.: Nexlo Games"
-                          : "Ex.: Agent Workbench"
+                          ? t("e.g. Nexlo Games")
+                          : t("e.g. Agent Workbench")
                       }
                       onChange={(event) => setFormName(event.target.value)}
                     />
@@ -1661,14 +1909,21 @@ export default function App() {
                 )}
                 {dialog === "environment" && (
                   <div className="field">
-                    Cor
+                    {t("Color")}
                     <div className="color-picker">
                       {(["violet", "blue", "green", "orange"] as Color[]).map(
                         (color) => (
                           <button
                             key={color}
                             type="button"
-                            aria-label={color}
+                            aria-label={t(
+                              {
+                                violet: "Violet",
+                                blue: "Blue",
+                                green: "Green",
+                                orange: "Orange",
+                              }[color],
+                            )}
                             aria-pressed={formColor === color}
                             className={`color-option ${color}`}
                             onClick={() => setFormColor(color)}
@@ -1682,18 +1937,18 @@ export default function App() {
                 )}
                 {(dialog === "project" || dialog === "projectPath") && (
                   <label className="field">
-                    Pasta do projeto{" "}
-                    <span>(necessária para executar o Worker)</span>
+                    {t("Project folder")}
+                    <span>{t("(required to run Worker)")}</span>
                     <input
                       maxLength={4096}
                       value={formPath}
-                      placeholder="/home/utilizador/Projects/meu-projeto"
+                      placeholder={t("/home/user/Projects/my-project")}
                       onChange={(event) => setFormPath(event.target.value)}
                     />
                     <small>
-                      Ao executar uma tarefa, o Codex poderá ler e alterar os
-                      ficheiros desta pasta. Escolhe apenas o projeto que queres
-                      disponibilizar.
+                      {t(
+                        "When running a task, Codex can read and modify files in this folder. Select only the project you want to make available.",
+                      )}
                     </small>
                   </label>
                 )}
@@ -1706,11 +1961,14 @@ export default function App() {
                       maxLength={100_000}
                       value={formText}
                       onChange={(event) => setFormText(event.target.value)}
-                      placeholder="Preferências, decisões e contexto importante..."
+                      placeholder={t(
+                        "Preferences, decisions and important context...",
+                      )}
                     />
                     <small>
-                      Este contexto será enviado nos pedidos de Chat e Worker
-                      deste ambiente ou projeto.
+                      {t(
+                        "This context is sent with Chat and Worker requests in this environment or project.",
+                      )}
                     </small>
                   </label>
                 )}
@@ -1720,14 +1978,14 @@ export default function App() {
                     className="secondary-button"
                     onClick={() => setDialog(null)}
                   >
-                    Cancelar
+                    {t("Cancel")}
                   </button>
                   <button className="primary-button" type="submit">
                     {dialog === "memory"
-                      ? "Guardar contexto"
+                      ? t("Save context")
                       : dialog === "projectPath"
-                        ? "Guardar pasta"
-                        : "Criar"}
+                        ? t("Save folder")
+                        : t("Create")}
                     <ArrowRight size={15} />
                   </button>
                 </div>
@@ -1735,6 +1993,53 @@ export default function App() {
             )}
           </section>
         </div>
+      )}
+      {management && (
+        <ManagementDialog
+          title={t(
+            management.action === "delete"
+              ? "Delete {name}?"
+              : management.action === "rename"
+                ? "Rename {name}"
+                : "Move {name}",
+            {
+              name:
+                management.target.type === "project"
+                  ? workspace.projects.find(
+                      (item) => item.id === management.target.id,
+                    )?.name || ""
+                  : workspace.conversations.find(
+                      (item) => item.id === management.target.id,
+                    )?.title || "",
+            },
+          )}
+          description={t(
+            management.action === "delete"
+              ? management.target.type === "project"
+                ? "The project will be removed. Its conversations and tasks will move to General. Local files will not be deleted."
+                : "This permanently removes the conversation, its messages and task history. This cannot be undone."
+              : management.action === "move"
+                ? "Choose a project in this environment, or keep the conversation in General."
+                : "Choose a name that is easy to find.",
+          )}
+          value={management.value}
+          options={
+            management.action === "move"
+              ? [
+                  { value: "", label: t("General") },
+                  ...projects.map((item) => ({
+                    value: item.id,
+                    label: item.name,
+                  })),
+                ]
+              : undefined
+          }
+          maxLength={management.target.type === "project" ? 80 : 100}
+          danger={management.action === "delete"}
+          onChange={(value) => setManagement({ ...management, value })}
+          onSubmit={submitManagement}
+          onClose={() => setManagement(null)}
+        />
       )}
     </div>
   );

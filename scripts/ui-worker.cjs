@@ -17,13 +17,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       environments: [
         {
           id: "personal",
-          name: "Pessoal",
+          name: "Personal",
           color: "violet",
           instructions: "Personal instructions",
         },
         {
           id: "work",
-          name: "Trabalho",
+          name: "Work",
           color: "blue",
           instructions: "Work instructions",
         },
@@ -53,6 +53,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           environmentId: args.environmentId,
           conversationId: args.conversationId,
           accept: args.accept,
+          approvalMode: args.approvalMode,
         });
         if (command === "plugin:window|is_maximized") return false;
         if (command === "desktop_integration_status")
@@ -78,7 +79,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           return {
             available: true,
             ready: true,
-            message: "Codex pronto. Execução isolada por projeto.",
+            message: "Codex is ready. Execution is isolated by project.",
           };
         if (command === "worker_history")
           return structuredClone(
@@ -157,7 +158,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           } else {
             emit({
               kind: "decision",
-              text: args.accept ? "Ação autorizada uma vez." : "Ação recusada.",
+              text: args.accept ? "Action allowed once." : "Ação recusada.",
               approvalId: args.approvalId,
             });
             emit({
@@ -205,31 +206,25 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("button", { name: "Fixture project", exact: true })
     .click();
   await page.getByRole("button", { name: "Worker", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Definir pasta", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Set folder", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("textbox")
     .fill("/projects/fixture-updated");
-  await page
-    .getByRole("button", { name: "Guardar pasta", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Save folder", exact: true }).click();
   await page
     .locator(".worker-project code")
     .filter({ hasText: "/projects/fixture-updated" })
     .waitFor();
   await page
-    .getByRole("combobox", { name: "Modelo" })
+    .getByRole("combobox", { name: "Model" })
     .selectOption("fixture-codex");
   await page
-    .getByRole("textbox", { name: "Descrição da tarefa" })
+    .getByRole("textbox", { name: "Task description" })
     .fill("Implementar uma feature com testes");
-  await page
-    .getByRole("textbox", { name: "Descrição da tarefa" })
-    .press("Enter");
+  await page.getByRole("textbox", { name: "Task description" }).press("Enter");
   const approve = page.getByRole("button", {
-    name: "Autorizar uma vez",
+    name: "Allow once",
     exact: true,
   });
   await approve.waitFor();
@@ -238,18 +233,19 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "Ambiente Trabalho", exact: true })
+    .getByRole("button", { name: "Environment Work", exact: true })
     .click();
   assert.equal(await approve.count(), 0);
   assert.equal(await page.locator(".worker-run").count(), 0);
-  await page.getByRole("button", { name: "Ver tarefa", exact: true }).click();
+  await page.getByRole("button", { name: "View task", exact: true }).click();
   await approve.click();
   await page
     .locator("article")
     .filter({ hasText: "Testes executados e alterações verificadas." })
     .waitFor();
-  await page.getByText("Ação autorizada uma vez.", { exact: true }).waitFor();
-  await page.getByText("Ver saída", { exact: true }).click();
+  await page.locator(".run-timeline > summary").first().click();
+  await page.getByText("Action allowed once.", { exact: true }).waitFor();
+  await page.getByText("View output", { exact: true }).click();
   await page.getByText("All tests passed", { exact: true }).waitFor();
   await page.screenshot({
     path: "/workspace/artifacts/worker-completed-0.4.0.png",
@@ -265,17 +261,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByText("Implementar uma feature com testes", { exact: true })
     .first()
     .click();
-  await page
-    .getByRole("button", { name: "Executar tarefa", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Recusar", exact: true }).click();
+  await page.getByRole("button", { name: "Run task", exact: true }).click();
+  await page.getByRole("button", { name: "Decline", exact: true }).click();
   await page
     .locator("article")
     .filter({ hasText: "Comando recusado pelo utilizador." })
     .waitFor();
-  await page
-    .getByRole("button", { name: "Executar tarefa", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Run task", exact: true }).click();
   await approve.waitFor();
   await page.locator(".composer .stop-button").click();
   await page
@@ -289,6 +281,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   assert.equal(calls.filter((call) => call.command === "worker_run").length, 3);
   assert.ok(calls.every((call) => call.environmentId === "personal"));
+  assert.ok(
+    calls
+      .filter((call) => call.command === "worker_run")
+      .every((call) => call.approvalMode === "ask"),
+  );
+  await page
+    .getByRole("combobox", { name: "Approval mode", exact: true })
+    .selectOption("auto");
   await page.reload();
   await page
     .getByRole("button", { name: "Fixture project", exact: true })
@@ -298,8 +298,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByText("Implementar uma feature com testes", { exact: true })
     .first()
     .click();
-  await page.locator(".worker-history").first().waitFor();
-  assert.equal(await page.locator(".worker-history").count(), 3);
+  await page.locator(".inline-run").first().waitFor();
+  assert.equal(
+    await page
+      .getByRole("combobox", { name: "Approval mode", exact: true })
+      .inputValue(),
+    "auto",
+  );
+  assert.equal(await page.locator(".inline-run").count(), 3);
   await page.setViewportSize({ width: 960, height: 700 });
   assert.equal(
     await page.evaluate(

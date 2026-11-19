@@ -1,30 +1,44 @@
-import { Check, Cpu, Folder, ShieldCheck, Square, X } from "lucide-react";
+import { t, dateLocale, localizeMessage } from "../i18n";
+import {
+  Check,
+  ChevronDown,
+  Cpu,
+  Folder,
+  LoaderCircle,
+  ShieldCheck,
+  Square,
+  X,
+} from "lucide-react";
+import { coalesceEvents } from "../worker";
 import type { WorkerController, WorkerEvent, WorkerRun } from "../worker";
+import { formatDuration, useElapsed } from "./ActivityIndicator";
 import { MessageContent } from "./MessageContent";
 
 const labels: Record<string, string> = {
-  running: "A executar",
-  awaitingApproval: "Precisa de aprovação",
-  completed: "Concluída",
-  failed: "Falhou",
-  interrupted: "Interrompida",
+  running: "Running",
+  awaitingApproval: "Needs approval",
+  completed: "Completed",
+  failed: "Failed",
+  interrupted: "Interrupted",
 };
 function Activity({ event }: { event: WorkerEvent }) {
   const item = event.item;
-  if (!item) return <p>{event.text}</p>;
+  if (!item) return <p>{t(event.text)}</p>;
   if (item.type === "commandExecution")
     return (
       <div className="worker-command">
-        <code>{item.command || "Comando"}</code>
+        <code>{item.command || t("Command")}</code>
         {item.cwd && (
           <small>
             {item.cwd}
-            {item.exitCode != null ? ` · Saída ${item.exitCode}` : ""}
+            {item.exitCode != null
+              ? ` · ${t("Exit code: {code}", { code: item.exitCode })}`
+              : ""}
           </small>
         )}
         {item.output && (
           <details>
-            <summary>Ver saída</summary>
+            <summary>{t("View output")}</summary>
             <pre>{item.output}</pre>
           </details>
         )}
@@ -37,11 +51,11 @@ function Activity({ event }: { event: WorkerEvent }) {
           <summary>{change.path}</summary>
           <pre>{change.diff}</pre>
         </details>
-      )) || <p>Alteração de ficheiros</p>}
+      )) || <p>{t("File changes")}</p>}
     </div>
   );
 }
-function RunActivity({
+export function RunActivity({
   run,
   active,
   worker,
@@ -50,91 +64,142 @@ function RunActivity({
   active: boolean;
   worker: WorkerController;
 }) {
+  const events = coalesceEvents(run.events);
   const resolved = new Set(
-    run.events
+    events
       .filter((event) => event.kind === "decision")
       .map((event) => event.approvalId),
   );
+  const pending = events.filter(
+    (event) =>
+      active &&
+      event.kind === "approval" &&
+      event.approvalId &&
+      !resolved.has(event.approvalId),
+  );
+  const elapsed = useElapsed(run.createdAt * 1000, active, run.durationMs);
+  const agentMessages = events.filter(
+    (event) => event.item?.type === "agentMessage",
+  );
+  const latestMessage = agentMessages.at(-1)?.item;
+  const liveOutput = latestMessage
+    ? latestMessage.phase === "commentary"
+      ? ""
+      : latestMessage.text || ""
+    : run.output;
   return (
-    <div className="worker-run" data-testid="worker-run">
-      <div className={`worker-run-header ${run.status}`}>
-        <strong>{labels[run.status] || run.status}</strong>
-        <span>{run.model}</span>
-        <time>
-          {new Date(run.createdAt * 1000).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
-      </div>
-      <div
-        className="worker-events"
-        role="log"
-        aria-label="Atividade do Worker"
-      >
-        {run.events
-          .filter((event) => event.kind !== "finished")
-          .map((event, index) => (
-            <div key={index} className={`worker-event ${event.kind}`}>
-              {event.kind === "approval" && event.text && (
-                <p className="worker-approval-reason">{event.text}</p>
-              )}
-              <Activity event={event} />
-              {active &&
-                event.kind === "approval" &&
-                event.approvalId &&
-                !resolved.has(event.approvalId) && (
-                  <div className="worker-approval-actions">
-                    <button
-                      onClick={() => worker.approve(event.approvalId!, false)}
-                    >
-                      <X size={14} />
-                      Recusar
-                    </button>
-                    <button
-                      className="approve"
-                      onClick={() => worker.approve(event.approvalId!, true)}
-                    >
-                      <Check size={14} />
-                      Autorizar uma vez
-                    </button>
+    <div
+      className={`worker-run inline-run ${active ? "active" : ""}`}
+      data-testid="worker-run"
+    >
+      <details className="run-timeline" open={active}>
+        <summary className={`worker-run-header ${run.status}`}>
+          {active && <LoaderCircle size={14} className="activity-spinner" />}
+          <strong>
+            {elapsed == null
+              ? t(labels[run.status] || run.status)
+              : t(active ? "Working for {duration}" : "Worked for {duration}", {
+                  duration: formatDuration(elapsed),
+                })}
+          </strong>
+          <span className="run-status">
+            {t(labels[run.status] || run.status)}
+          </span>
+          <ChevronDown size={14} />
+        </summary>
+        <div
+          className="worker-events"
+          role="log"
+          aria-label={t("Worker activity")}
+        >
+          {events
+            .filter(
+              (event) =>
+                !["finished", "approval", "approvalSent"].includes(event.kind),
+            )
+            .map((event, index) => {
+              const item = event.item;
+              if (item?.type === "agentMessage") {
+                if (
+                  item.phase === "final_answer" ||
+                  (item === latestMessage && item.phase !== "commentary")
+                )
+                  return null;
+                return (
+                  <div className="timeline-commentary" key={item.id || index}>
+                    <MessageContent content={item.text || ""} />
                   </div>
-                )}
-            </div>
-          ))}
-      </div>
-      {active && run.output && (
-        <div className="worker-response" aria-live="polite">
-          <MessageContent content={run.output} />
+                );
+              }
+              if (item?.type === "reasoning" || item?.type === "plan")
+                return item.summary || item.text ? (
+                  <p className="reasoning-summary" key={item.id || index}>
+                    {item.summary || item.text}
+                  </p>
+                ) : null;
+              return (
+                <div key={index} className={`worker-event ${event.kind}`}>
+                  <Activity event={event} />
+                </div>
+              );
+            })}
         </div>
-      )}
-      {!active && run.output && (
-        <details className="worker-result">
-          <summary>Resposta guardada do Worker</summary>
-          <MessageContent content={run.output} />
-        </details>
+      </details>
+      {pending.map((event) => (
+        <section
+          className="inline-approval"
+          key={event.approvalId}
+          aria-label={t("Needs approval")}
+        >
+          <strong>{t("Approval required")}</strong>
+          <p>{t(event.text)}</p>
+          <Activity event={event} />
+          <div className="worker-approval-actions">
+            <button onClick={() => worker.approve(event.approvalId!, false)}>
+              <X size={14} />
+              {t("Decline")}
+            </button>
+            <button
+              className="approve"
+              onClick={() => worker.approve(event.approvalId!, true)}
+            >
+              <Check size={14} />
+              {t("Allow once")}
+            </button>
+          </div>
+        </section>
+      ))}
+      {active && liveOutput && (
+        <div className="worker-response" aria-live="polite">
+          <MessageContent content={liveOutput} />
+        </div>
       )}
       {run.error && (
         <p className="account-issue" role="alert">
-          {run.error}
+          {localizeMessage(run.error)}
         </p>
       )}
       {active && (
         <button className="text-button" onClick={worker.cancel}>
           <Square size={13} />
-          Parar tarefa
+          {t("Stop task")}
         </button>
       )}
     </div>
   );
 }
+
 export function WorkerSetup({ worker }: { worker: WorkerController }) {
   return (
     <div className="worker-setup">
       <Cpu size={18} />
       <div>
-        <strong>Runtime do Codex</strong>
-        <p>{worker.runtime?.message || "A verificar o Docker..."}</p>
+        <strong>{t("Codex runtime")}</strong>
+        <p>
+          {worker.runtime?.message
+            ? localizeMessage(worker.runtime.message)
+            : t("Checking Docker...")}
+        </p>
         <div className="worker-setup-actions">
           <button
             type="button"
@@ -142,7 +207,7 @@ export function WorkerSetup({ worker }: { worker: WorkerController }) {
             disabled={worker.preparing || worker.checking}
             onClick={worker.refresh}
           >
-            {worker.checking ? "A verificar..." : "Verificar Docker"}
+            {worker.checking ? t("Checking...") : t("Check Docker")}
           </button>
           {!worker.runtime?.ready && (
             <button
@@ -151,7 +216,7 @@ export function WorkerSetup({ worker }: { worker: WorkerController }) {
               disabled={!worker.runtime?.available || worker.preparing}
               onClick={worker.prepare}
             >
-              {worker.preparing ? "A preparar o Codex..." : "Preparar Worker"}
+              {worker.preparing ? t("Preparing Codex...") : t("Prepare Worker")}
             </button>
           )}
         </div>
@@ -164,28 +229,30 @@ export function WorkerPanel({
   conversationId,
   projectPath,
   onEditPath,
+  inlineOnly = false,
 }: {
   worker: WorkerController;
   conversationId: string | null;
   projectPath?: string;
   onEditPath?: () => void;
+  inlineOnly?: boolean;
 }) {
   const active =
     worker.active?.conversationId === conversationId ? worker.active : null;
   return (
-    <section className="worker-panel" aria-label="Execução do Codex">
+    <section className="worker-panel" aria-label={t("Codex execution")}>
       <div className="worker-boundary">
         <ShieldCheck size={17} />
         <span>
-          Isolado por projeto
+          {t("Isolated by project")}
           <span className="worker-boundary-detail">
-            Comandos sem rede · Aprovações pontuais
+            {t("Commands without network · One-time approvals")}
           </span>
         </span>
       </div>
       <div className="worker-project">
         <Folder size={14} />
-        <code>{projectPath || "Seleciona um projeto com pasta local"}</code>
+        <code>{projectPath || t("Select a project with a local folder")}</code>
         {onEditPath && (
           <button
             type="button"
@@ -193,32 +260,35 @@ export function WorkerPanel({
             disabled={!!worker.active}
             onClick={onEditPath}
           >
-            Definir pasta
+            {t("Set folder")}
           </button>
         )}
       </div>
       {!worker.runtime?.ready && <WorkerSetup worker={worker} />}
       {worker.issue && (
         <p className="account-issue" role="alert">
-          {worker.issue}
+          {localizeMessage(worker.issue)}
         </p>
       )}
-      {active && <RunActivity run={active} active worker={worker} />}
-      {worker.history
-        .filter((run) => run.id !== active?.id)
-        .map((run) => (
-          <details
-            className="worker-history"
-            key={run.id}
-            open={worker.history[0]?.id === run.id && !active}
-          >
-            <summary>
-              {labels[run.status] || run.status} ·{" "}
-              {new Date(run.createdAt * 1000).toLocaleString()}
-            </summary>
-            <RunActivity run={run} active={false} worker={worker} />
-          </details>
-        ))}
+      {!inlineOnly && active && (
+        <RunActivity run={active} active worker={worker} />
+      )}
+      {!inlineOnly &&
+        worker.history
+          .filter((run) => run.id !== active?.id)
+          .map((run) => (
+            <details
+              className="worker-history"
+              key={run.id}
+              open={worker.history[0]?.id === run.id && !active}
+            >
+              <summary>
+                {t(labels[run.status] || run.status)} ·{" "}
+                {new Date(run.createdAt * 1000).toLocaleString(dateLocale())}
+              </summary>
+              <RunActivity run={run} active={false} worker={worker} />
+            </details>
+          ))}
     </section>
   );
 }

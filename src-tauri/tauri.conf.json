@@ -32,7 +32,7 @@
       "appimage"
     ],
     "category": "DeveloperTool",
-    "shortDescription": "Ambientes separados para conversar e programar com IA",
+    "shortDescription": "Separate workspaces for AI conversations and coding",
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",

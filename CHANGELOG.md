@@ -6,6 +6,10 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Inline assistant/Worker activity with public progress summaries and persisted elapsed time.
+- Project accordions, separate unassigned conversations, and context actions for renaming, pinning, duplication, moving, archiving, restoring and deletion.
+- Ask for approval and model-reviewed low-risk automatic approval modes, retaining Docker isolation and manual fallback.
+- Application-wide English/Portuguese localization with English defaults, persistent language selection, localized native API errors, Worker statuses and authentication callback pages.
 - Standard AppImage update metadata for Gear Lever and AppImageUpdate, with verified `.zsync` indexes included in CI artifacts and GitHub Releases.
 - Root-level `LICENSE-BRAND.md` for original images and visual identity terms.
 - Explicit restrictions on republication of original images and brand assets, including both downloadable brand kits.

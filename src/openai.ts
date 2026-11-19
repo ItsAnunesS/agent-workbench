@@ -1,5 +1,6 @@
+import { invoke } from "./api";
 import { useCallback, useEffect, useState } from "react";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isTauri } from "@tauri-apps/api/core";
 
 export interface Account {
   environmentId: string;
@@ -18,6 +19,7 @@ export type ChatStreamEvent =
       input_tokens: number | null;
       output_tokens: number | null;
     }
+  | { type: "summary"; text: string }
   | { type: "interrupted" };
 
 export function useOpenAi(environmentId: string) {
@@ -43,7 +45,7 @@ export function useOpenAi(environmentId: string) {
     void refreshAccounts().catch(() =>
       setIssues((previous) => ({
         ...previous,
-        [environmentId]: "Não foi possível consultar as contas locais.",
+        [environmentId]: "Could not load local accounts.",
       })),
     );
   }, [refreshAccounts, environmentId]);
@@ -70,7 +72,7 @@ export function useOpenAi(environmentId: string) {
           ...previous,
           [environmentId]: result.length
             ? ""
-            : "A conta não disponibilizou modelos para este app.",
+            : "The account did not provide any models for this app.",
         }));
       })
       .catch((error) => {
@@ -98,7 +100,7 @@ export function useOpenAi(environmentId: string) {
     if (!isTauri()) {
       setIssues((previous) => ({
         ...previous,
-        [environmentId]: "Abre o AppImage para ligar a tua conta.",
+        [environmentId]: "Open the AppImage to connect your account.",
       }));
       return;
     }
@@ -128,7 +130,7 @@ export function useOpenAi(environmentId: string) {
         ...previous,
         [environmentId]: revoked
           ? ""
-          : "Sessão local terminada. Não foi possível confirmar a revogação remota. Podes remover o acesso nas definições do ChatGPT.",
+          : "Local session ended. Remote revocation could not be confirmed. You can remove access in ChatGPT settings.",
       }));
     } catch (error) {
       setIssues((previous) => ({

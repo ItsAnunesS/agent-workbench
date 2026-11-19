@@ -39,10 +39,16 @@ Feito com **Tauri, React, TypeScript e Rust**. A distribuição atual é o AppIm
 - Ambientes separados por contexto, com uma conta OpenAI por ambiente.
 - Históricos independentes de Chat e Worker. O contexto só passa de um modo para outro por uma ação explícita.
 - Chat com streaming, escolha de modelo e cancelamento, usando uma assinatura ChatGPT elegível.
-- Codex Worker com atividade dos comandos, diffs, aprovações pontuais e cancelamento.
+- Codex Worker com atividade dos comandos junto da conversa, resumos públicos de progresso, diffs, tempo de execução persistente, aprovações e cancelamento.
+- Projetos expansíveis com suas conversas/tarefas, separados das conversas sem projeto. Use o botão direito ou o menu de ações para renomear, fixar, duplicar, mover, arquivar, restaurar ou remover itens.
 - Um container Docker por tarefa. Apenas a pasta escolhida fica montada; os comandos não têm acesso externo à rede. As credenciais OpenAI permanecem no app, fora do container.
 - Dados locais em SQLite, instruções por ambiente e memória por projeto.
 - Temas escuro, claro e do sistema, controles de janela integrados e ícones nativos.
+- Inglês por padrão, com seleção persistente entre inglês e português nas definições. Os textos da interface, erros das APIs nativas, estados do Worker e a página de retorno do login seguem o idioma escolhido.
+
+O Worker oferece **Pedir aprovação** (padrão) e **Aprovar por mim** no campo de mensagem. A revisão automática usa o modelo selecionado para aprovar apenas ações avaliadas como de baixo risco. Ações potencialmente inseguras, avaliações inconclusivas e falhas da revisão voltam à aprovação manual. Os dois modos mantêm as mesmas restrições de Docker, pasta do projeto e rede. A escolha vale para a próxima tarefa e fica salva neste dispositivo.
+
+Arquivar preserva o conteúdo. Remover uma conversa também remove seus registros de tarefas; remover um projeto mantém as conversas em Geral e nunca apaga arquivos locais. O menu impede arquivar, mover ou remover trabalho em execução.
 
 O Worker altera a pasta do projeto diretamente. Cancelar uma tarefa não desfaz alterações. A imagem inicial inclui Node.js, Python, Git e ferramentas básicas de compilação; outros toolchains não são instalados automaticamente.
 
@@ -62,6 +68,8 @@ O Worker altera a pasta do projeto diretamente. Cancelar uma tarefa não desfaz 
 O acesso pela assinatura depende da elegibilidade da conta e dos modelos liberados pela OpenAI. O plano ChatGPT não garante acesso ilimitado. O histórico pertence ao app; conversas oficiais do ChatGPT e do Codex não são importadas.
 
 No Linux, o AppImage registra o atalho e o logo no menu de aplicativos do usuário. Se mover o arquivo, abra-o uma vez no novo local. A opção **Reparar integração**, nas definições, atualiza o atalho.
+
+Use **Settings > Language** para mudar o idioma. Os nomes dos ambientes existentes, conversas, memória dos projetos, respostas dos modelos, código e saída dos comandos são preservados como foram escritos. Novas instalações criam os ambientes padrão como **Personal** e **Work**.
 
 Os novos AppImages incluem a fonte padrão de atualização para a versão estável mais recente no GitHub Releases. Importe o AppImage no Gear Lever ou em outro gerenciador compatível para detectar e instalar atualizações sem configurar a URL do repositório. A verificação e a instalação automática dependem das configurações do gerenciador. AppImages antigos sem esses metadados precisam ser substituídos manualmente uma vez. O AppImageUpdate também pode usar o arquivo `.zsync` publicado junto de cada versão; para executar o app, baixe o `.AppImage`.
 

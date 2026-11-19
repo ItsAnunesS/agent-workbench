@@ -15,13 +15,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
       environments: [
         {
           id: "personal",
-          name: "Pessoal",
+          name: "Personal",
           color: "violet",
           instructions: "Personal only",
         },
         {
           id: "work",
-          name: "Trabalho",
+          name: "Work",
           color: "blue",
           instructions: "Work only",
         },
@@ -101,7 +101,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
           );
           if (!conversation) throw "Wrong conversation boundary";
           if (conversation.messages.at(-1).content === "limite")
-            throw "O limite de utilização foi atingido.";
+            throw "The usage limit has been reached. Check your limits in ChatGPT > Settings > Usage.";
           const chunks =
             conversation.messages.at(-1).content === "código"
               ? [
@@ -116,6 +116,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
                     "Resposta longa terminada.",
                   ]
                 : ["Resposta ", "de teste ", "concluída."];
+          args.onEvent.onmessage({
+            type: "summary",
+            text: "Reviewing the available context.",
+          });
           for (const text of chunks) {
             await new Promise((resolve) => setTimeout(resolve, 250));
             if (cancellations.has(args.requestId)) {
@@ -136,84 +140,90 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     };
   });
   await page.goto("http://127.0.0.1:1420");
-  await page.getByRole("button", { name: "Definições", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page
     .getByRole("button", { name: "Continue with ChatGPT", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Desligar conta", exact: true })
+    .getByRole("button", { name: "Disconnect account", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "Concluir", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Modelo" })
+    .getByRole("combobox", { name: "Model" })
     .selectOption("personal-model");
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("Mensagem pessoal");
-  await page
-    .getByRole("button", { name: "Enviar mensagem", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page
     .locator("article p")
     .filter({ hasText: "Resposta de teste concluída." })
     .waitFor();
   await page
-    .getByRole("button", { name: "Parar", exact: true })
+    .getByRole("button", { name: "Stop", exact: true })
     .waitFor({ state: "hidden" });
   assert.equal(await page.locator("article").count(), 2);
+  await page.locator(".response-activity summary").first().click();
+  await page
+    .getByText("Reviewing the available context.", { exact: true })
+    .waitFor();
+  const firstAnswer = await page.evaluate(() =>
+    JSON.parse(
+      localStorage.getItem("fixture-workspace"),
+    ).conversations[0].messages.at(-1),
+  );
+  assert.equal(typeof firstAnswer.durationMs, "number");
+  assert.equal(firstAnswer.summary, "Reviewing the available context.");
 
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("Interromper resposta");
-  await page
-    .getByRole("button", { name: "Enviar mensagem", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page
     .locator("article")
-    .filter({ hasText: "A responder..." })
+    .filter({ hasText: "Responding..." })
     .getByText("Resposta", { exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "Parar", exact: true }).click();
-  await page.getByText("Resposta interrompida", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await page.getByText("Response interrupted", { exact: true }).waitFor();
 
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("limite");
-  await page
-    .getByRole("button", { name: "Enviar mensagem", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page
     .getByRole("alert")
-    .filter({ hasText: "O limite de utilização foi atingido." })
+    .filter({
+      hasText:
+        "The usage limit has been reached. Check your limits in ChatGPT > Settings > Usage.",
+    })
     .waitFor();
   await page
-    .getByRole("button", { name: "Ambiente Trabalho", exact: true })
+    .getByRole("button", { name: "Environment Work", exact: true })
     .click();
-  assert.equal(await page.getByRole("combobox", { name: "Modelo" }).count(), 0);
+  assert.equal(await page.getByRole("combobox", { name: "Model" }).count(), 0);
   assert.equal(await page.locator("article").count(), 0);
-  await page.getByRole("button", { name: "Definições", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page
     .getByRole("button", { name: "Continue with ChatGPT", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Desligar conta", exact: true })
+    .getByRole("button", { name: "Disconnect account", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "Concluir", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await page
-    .getByRole("combobox", { name: "Modelo" })
+    .getByRole("combobox", { name: "Model" })
     .selectOption("work-model");
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("Mensagem profissional");
-  await page
-    .getByRole("button", { name: "Enviar mensagem", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page
     .locator("article p")
     .filter({ hasText: "Resposta de teste concluída." })
     .waitFor();
   await page
-    .getByRole("button", { name: "Parar", exact: true })
+    .getByRole("button", { name: "Stop", exact: true })
     .waitFor({ state: "hidden" });
   const calls = await page.evaluate(() =>
     window.fixtureCalls.filter((call) => call.command === "openai_chat"),
@@ -239,13 +249,11 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   assert.ok(!work.messages.some((item) => item.content === "Mensagem pessoal"));
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("código");
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page
-    .getByRole("button", { name: "Enviar mensagem", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Parar", exact: true })
+    .getByRole("button", { name: "Stop", exact: true })
     .waitFor({ state: "hidden" });
   await page
     .locator(".code-block code")
@@ -253,10 +261,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .waitFor();
   assert.equal(await page.locator("article script").count(), 0);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page
-    .getByRole("button", { name: "Copiar código", exact: true })
-    .click();
-  await page.getByText("Copiado", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Copy code", exact: true }).click();
+  await page.getByText("Copied", { exact: true }).waitFor();
   assert.equal(
     await page.evaluate(() => navigator.clipboard.readText()),
     "const safe = '<script>alert(1)</script>';",
@@ -266,11 +272,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     fullPage: true,
   });
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("texto longo");
-  await page
-    .getByRole("button", { name: "Enviar mensagem", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
   await page.waitForFunction(
     () =>
       document.querySelector(".message-scroll").scrollHeight >
@@ -281,10 +285,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     viewport.dispatchEvent(new Event("scroll"));
   });
   await page
-    .getByRole("button", { name: "Ir para a última mensagem", exact: true })
+    .getByRole("button", { name: "Go to the latest message", exact: true })
     .waitFor();
   await page
-    .getByRole("button", { name: "Parar", exact: true })
+    .getByRole("button", { name: "Stop", exact: true })
     .waitFor({ state: "hidden" });
   assert.equal(
     await page
@@ -293,7 +297,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     0,
   );
   await page
-    .getByRole("button", { name: "Ir para a última mensagem", exact: true })
+    .getByRole("button", { name: "Go to the latest message", exact: true })
     .click();
   assert.ok(
     await page

@@ -12,9 +12,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   page.on("pageerror", (error) => errors.push(error.message));
   const theme = () => page.locator("html").getAttribute("data-theme");
   const settings = async () =>
-    page.getByRole("button", { name: "Definições", exact: true }).click();
+    page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.goto("http://127.0.0.1:1420");
-  await page.getByRole("heading", { name: "Uma ideia começa aqui." }).waitFor();
+  await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   assert.equal(await theme(), "dark");
   await page.screenshot({
     path: "/workspace/artifacts/theme-dark-0.5.0.png",
@@ -22,10 +22,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   });
   await settings();
   assert.equal(
-    await page.getByRole("radio", { name: "Sistema", exact: true }).isChecked(),
+    await page.getByRole("radio", { name: "System", exact: true }).isChecked(),
     true,
   );
-  await page.getByRole("radio", { name: "Claro", exact: true }).check();
+  await page.getByRole("radio", { name: "Light", exact: true }).check();
   assert.equal(await theme(), "light");
   assert.match(
     await page.locator(".settings-wordmark").getAttribute("src"),
@@ -35,18 +35,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     path: "/workspace/artifacts/theme-settings-light-0.5.0.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Concluir", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.screenshot({
     path: "/workspace/artifacts/theme-light-0.5.0.png",
     fullPage: true,
   });
   await page.reload();
-  await page.getByRole("heading", { name: "Uma ideia começa aqui." }).waitFor();
+  await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   assert.equal(await theme(), "light");
   await page.emulateMedia({ colorScheme: "dark" });
   assert.equal(await theme(), "light");
   await page
-    .getByRole("button", { name: "Ativar tema escuro", exact: true })
+    .getByRole("button", { name: "Switch to dark theme", exact: true })
     .click();
   assert.equal(await theme(), "dark");
   await settings();
@@ -54,7 +54,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     path: "/workspace/artifacts/theme-settings-dark-0.5.0.png",
     fullPage: true,
   });
-  await page.getByRole("radio", { name: "Sistema", exact: true }).check();
+  await page.getByRole("radio", { name: "System", exact: true }).check();
   await page.emulateMedia({ colorScheme: "light" });
   await page.waitForFunction(
     () => document.documentElement.dataset.theme === "light",
@@ -63,23 +63,23 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   await page.waitForFunction(
     () => document.documentElement.dataset.theme === "dark",
   );
-  await page.getByRole("radio", { name: "Escuro", exact: true }).focus();
+  await page.getByRole("radio", { name: "Dark", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   assert.equal(
-    await page.getByRole("radio", { name: "Claro", exact: true }).isChecked(),
+    await page.getByRole("radio", { name: "Light", exact: true }).isChecked(),
     true,
   );
-  await page.getByRole("button", { name: "Concluir", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
 
   for (const value of ["dark", "light"]) {
     await settings();
     await page
       .getByRole("radio", {
-        name: value === "dark" ? "Escuro" : "Claro",
+        name: value === "dark" ? "Dark" : "Light",
         exact: true,
       })
       .check();
-    await page.getByRole("button", { name: "Concluir", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     const contrasts = await page.evaluate(() => {
       const style = getComputedStyle(document.documentElement);
       const luminance = (color) => {
@@ -133,7 +133,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   }
   await page.evaluate(() => localStorage.setItem("workbench.theme", "invalid"));
   await page.reload();
-  await page.getByRole("heading", { name: "Uma ideia começa aqui." }).waitFor();
+  await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   assert.equal(await theme(), "dark");
   const blocked = await context.newPage();
   await blocked.addInitScript(() =>
@@ -145,10 +145,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   );
   await blocked.goto("http://127.0.0.1:1420");
   await blocked
-    .getByRole("heading", { name: "Uma ideia começa aqui." })
+    .getByRole("heading", { name: "An idea starts here." })
     .waitFor();
   await blocked
-    .getByRole("button", { name: "Ativar tema claro", exact: true })
+    .getByRole("button", { name: "Switch to light theme", exact: true })
     .click();
   assert.equal(
     await blocked.locator("html").getAttribute("data-theme"),

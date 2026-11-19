@@ -12,32 +12,51 @@ pub enum CallbackState {
     Invalid,
 }
 
-pub fn callback_response(state: CallbackState) -> String {
+pub fn callback_response(state: CallbackState, locale: crate::i18n::Locale) -> String {
     let (status, eyebrow, title, description, step_mark, step_title, step_body) = match state {
         CallbackState::Received => (
-            "200 OK", "RETORNO RECEBIDO", "Continua na aplicação.",
-            "O retorno da OpenAI chegou ao Agent Workbench. A aplicação está a validar a autorização da tua conta.",
-            "2", "Volta ao teu ambiente", "A confirmação da ligação aparece nas definições da conta, dentro da aplicação.",
+            "200 OK", "CALLBACK RECEIVED", "Continue in the app.",
+            "The OpenAI callback reached Agent Workbench. The app is validating your account authorization.",
+            "2", "Return to your environment", "Connection confirmation appears in the account settings inside the app.",
         ),
         CallbackState::Denied => (
-            "400 Bad Request", "LIGAÇÃO NÃO CONCLUÍDA", "Vamos tentar novamente?",
-            "A autorização não foi concluída na OpenAI. A conta anteriormente ligada ao ambiente foi preservada.",
-            "↗", "Volta às definições da conta", "No Agent Workbench, inicia novamente a ligação e conclui a autorização no navegador.",
+            "400 Bad Request", "CONNECTION NOT COMPLETED", "Shall we try again?",
+            "Authorization was not completed at OpenAI. The previously connected account was preserved.",
+            "↗", "Return to account settings", "In Agent Workbench, connect the account again and complete authorization in the browser.",
         ),
         CallbackState::Invalid => (
-            "400 Bad Request", "PEDIDO NÃO RECONHECIDO", "Esta ligação não é válida.",
-            "Esta página não corresponde ao login em curso. Não foi utilizada para ligar uma conta.",
-            "↗", "Inicia a ligação na aplicação", "Abre as definições do ambiente no Agent Workbench e começa um novo login.",
+            "400 Bad Request", "UNRECOGNIZED REQUEST", "This connection is not valid.",
+            "This page does not match the login in progress. It was not used to connect an account.",
+            "↗", "Start the connection in the app", "Open the environment settings in Agent Workbench and start a new login.",
         ),
     };
     // The page contains only application-owned constants, never callback parameters.
     let body = TEMPLATE
-        .replace("__TITLE__", title)
-        .replace("__EYEBROW__", eyebrow)
-        .replace("__DESCRIPTION__", description)
+        .replace("__LANG__", locale.tag())
+        .replace(
+            "__LOCAL__",
+            &crate::i18n::message("Local connection", locale),
+        )
+        .replace(
+            "__PRIVACY__",
+            &crate::i18n::message(
+                "This page is served by Agent Workbench on your computer. You can close this tab.",
+                locale,
+            ),
+        )
+        .replace(
+            "__TAGLINE__",
+            &crate::i18n::message("Your space to think and build.", locale),
+        )
+        .replace("__TITLE__", &crate::i18n::message(title, locale))
+        .replace("__EYEBROW__", &crate::i18n::message(eyebrow, locale))
+        .replace(
+            "__DESCRIPTION__",
+            &crate::i18n::message(description, locale),
+        )
         .replace("__STEP_MARK__", step_mark)
-        .replace("__STEP_TITLE__", step_title)
-        .replace("__STEP_BODY__", step_body)
+        .replace("__STEP_TITLE__", &crate::i18n::message(step_title, locale))
+        .replace("__STEP_BODY__", &crate::i18n::message(step_body, locale))
         .replace("__FAVICON__", &STANDARD.encode(LOGO.as_bytes()))
         .replace(
             "__FONT_REGULAR__",
@@ -58,28 +77,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn callback_uses_the_login_language_without_changing_status_or_security_headers() {
+        for locale in [
+            crate::i18n::Locale::English,
+            crate::i18n::Locale::Portuguese,
+        ] {
+            let response = callback_response(CallbackState::Received, locale);
+            assert!(response.starts_with("HTTP/1.1 200 OK"));
+            assert!(response.contains(&format!("lang=\"{}\"", locale.tag())));
+            assert!(response.contains(&crate::i18n::message("Continue in the app.", locale)));
+            assert!(!response.contains("__LOCAL__"));
+            assert!(!response.contains("__PRIVACY__"));
+            assert!(!response.contains("__TAGLINE__"));
+            let (headers, body) = response.split_once("\r\n\r\n").unwrap();
+            assert!(headers.contains(&format!("Content-Length: {}", body.len())));
+            assert!(headers.contains("Cache-Control: no-store"));
+        }
+    }
+
+    #[test]
     fn received_page_does_not_claim_identity_was_already_validated() {
-        let response = callback_response(CallbackState::Received);
+        let response = callback_response(CallbackState::Received, crate::i18n::Locale::English);
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("está a validar a autorização"));
+        assert!(response.contains("is validating your account authorization"));
         assert!(response.contains("#FF791F"));
         assert!(!response.contains("__TITLE__"));
-        assert!(!response.contains("Login concluído"));
+        assert!(!response.contains("Login completed"));
     }
 
     #[test]
     fn error_pages_use_error_status_and_safe_next_steps() {
         for state in [CallbackState::Denied, CallbackState::Invalid] {
-            let response = callback_response(state);
+            let response = callback_response(state, crate::i18n::Locale::English);
             assert!(response.starts_with("HTTP/1.1 400 Bad Request"));
             assert!(response.contains("Cache-Control: no-store"));
-            assert!(!response.contains("RETORNO RECEBIDO"));
+            assert!(!response.contains("CALLBACK RECEIVED"));
         }
     }
 
     #[test]
     fn cleanup_script_is_hash_authorized_and_content_length_is_utf8_bytes() {
-        let response = callback_response(CallbackState::Received);
+        let response = callback_response(CallbackState::Received, crate::i18n::Locale::English);
         let (headers, body) = response.split_once("\r\n\r\n").unwrap();
         assert!(headers.contains(&format!(
             "script-src 'sha256-{}'",
@@ -109,7 +147,7 @@ mod tests {
             ] {
                 std::fs::write(
                     directory.join(format!("{name}.http")),
-                    callback_response(state),
+                    callback_response(state, crate::i18n::Locale::English),
                 )
                 .unwrap();
             }

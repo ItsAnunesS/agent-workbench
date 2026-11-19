@@ -9,17 +9,17 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("http://127.0.0.1:1420");
-  await page.getByRole("heading", { name: "Uma ideia começa aqui." }).waitFor();
+  await page.getByRole("heading", { name: "An idea starts here." }).waitFor();
   await page.screenshot({
     path: "/workspace/artifacts/interface.png",
     fullPage: true,
   });
 
   await page
-    .getByRole("textbox", { name: "Mensagem", exact: true })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill("Contexto pessoal reservado");
   await page
-    .getByRole("button", { name: "Guardar mensagem localmente" })
+    .getByRole("button", { name: "Save message locally" })
     .click();
   await page
     .locator("article")
@@ -32,15 +32,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .getByRole("button", { name: "Contexto pessoal reservado", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Criar tarefa a partir desta conversa" })
+    .getByRole("button", { name: "Create a task from this conversation" })
     .click();
   await page
-    .getByText("Contexto copiado de um Chat deste ambiente.", { exact: false })
+    .getByText("Context copied from a Chat in this environment.", { exact: false })
     .waitFor();
   assert.equal(await page.locator("article").count(), 1);
 
   await page
-    .getByRole("button", { name: "Ambiente Trabalho", exact: true })
+    .getByRole("button", { name: "Environment Work", exact: true })
     .click();
   assert.equal(await page.locator("article").count(), 0);
   assert.equal(
@@ -50,19 +50,19 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     0,
   );
   await page
-    .getByRole("button", { name: "Criar projeto", exact: true })
+    .getByRole("button", { name: "Create project", exact: true })
     .click();
-  await page.getByLabel("Nome", { exact: true }).fill("Projeto profissional");
-  await page.getByRole("button", { name: "Criar", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Projeto profissional");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await page
-    .getByRole("button", { name: "Editar contexto", exact: true })
+    .getByRole("button", { name: "Edit context", exact: true })
     .click();
   await page
     .getByRole("dialog")
     .getByRole("textbox")
     .fill("Memória exclusiva do projeto profissional");
   await page
-    .getByRole("button", { name: "Guardar contexto", exact: true })
+    .getByRole("button", { name: "Save context", exact: true })
     .click();
   await page
     .locator(".memory-preview")
@@ -70,12 +70,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     .waitFor();
 
   await page
-    .getByRole("button", { name: "Criar ambiente", exact: true })
+    .getByRole("button", { name: "Create environment", exact: true })
     .click();
-  await page.getByLabel("Nome", { exact: true }).fill("Nexlo Games");
-  await page.getByRole("button", { name: "Criar", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Nexlo Games");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
   await page
-    .getByRole("button", { name: "Ambiente Nexlo Games", exact: true })
+    .getByRole("button", { name: "Environment Nexlo Games", exact: true })
     .waitFor();
   assert.equal(
     await page

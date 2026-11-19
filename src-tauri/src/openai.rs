@@ -115,6 +115,9 @@ pub enum ChatEvent {
         input_tokens: Option<u64>,
         output_tokens: Option<u64>,
     },
+    Summary {
+        text: String,
+    },
     Interrupted,
 }
 
@@ -127,19 +130,19 @@ fn now() -> u64 {
 
 fn random_secret() -> Result<String, String> {
     let mut bytes = [0_u8; 32];
-    getrandom::fill(&mut bytes).map_err(|_| "Não foi possível preparar uma sessão segura.")?;
+    getrandom::fill(&mut bytes).map_err(|_| "Could not prepare a secure session.")?;
     Ok(URL_SAFE_NO_PAD.encode(bytes))
 }
 
 fn trusted_auth_url(value: &str) -> Result<Url, String> {
-    let url = Url::parse(value).map_err(|_| "Configuração de autenticação inválida.")?;
+    let url = Url::parse(value).map_err(|_| "Invalid authentication configuration.")?;
     if url.scheme() != "https"
         || url.host_str() != Some("auth.openai.com")
         || url.port_or_known_default() != Some(443)
         || !url.username().is_empty()
         || url.password().is_some()
     {
-        return Err("Destino de autenticação inválido.".into());
+        return Err("Invalid authentication destination.".into());
     }
     Ok(url)
 }
@@ -157,14 +160,12 @@ fn persist(path: &Path, credentials: &Credentials) -> Result<(), String> {
     let result = (|| {
         let mut file = options
             .open(&temporary)
-            .map_err(|_| "Não foi possível proteger as credenciais locais.")?;
-        let bytes = serde_json::to_vec(credentials)
-            .map_err(|_| "Não foi possível guardar as credenciais.")?;
+            .map_err(|_| "Could not protect local credentials.")?;
+        let bytes = serde_json::to_vec(credentials).map_err(|_| "Could not save credentials.")?;
         file.write_all(&bytes)
             .and_then(|_| file.sync_all())
-            .map_err(|_| "Não foi possível guardar as credenciais.")?;
-        std::fs::rename(&temporary, path)
-            .map_err(|_| "Não foi possível atualizar as credenciais.")?;
+            .map_err(|_| "Could not save credentials.")?;
+        std::fs::rename(&temporary, path).map_err(|_| "Could not update credentials.")?;
         Ok(())
     })();
     if result.is_err() {
@@ -199,17 +200,14 @@ pub fn initialize(directory: &Path) -> Result<OpenAi, Box<dyn std::error::Error>
 }
 
 fn ensure_environment(database: &super::Database, environment_id: &str) -> Result<(), String> {
-    let connection = database
-        .0
-        .lock()
-        .map_err(|_| "Dados locais indisponíveis.")?;
+    let connection = database.0.lock().map_err(|_| "Local data unavailable.")?;
     let workspace = super::read_workspace(&connection)?;
     if !workspace
         .environments
         .iter()
         .any(|environment| environment.id == environment_id)
     {
-        return Err("Ambiente inexistente.".into());
+        return Err("Environment not found.".into());
     }
     Ok(())
 }
@@ -220,14 +218,14 @@ async fn discovery(client: &Client) -> Result<Discovery, String> {
         .timeout(Duration::from_secs(20))
         .send()
         .await
-        .map_err(|_| "Não foi possível contactar a OpenAI.")?
+        .map_err(|_| "Could not contact OpenAI.")?
         .error_for_status()
-        .map_err(|_| "A OpenAI não disponibilizou a configuração de login.")?
+        .map_err(|_| "OpenAI did not provide the login configuration.")?
         .json()
         .await
-        .map_err(|_| "Configuração de login inválida.")?;
+        .map_err(|_| "Invalid login configuration.")?;
     if metadata.issuer != AUTH {
-        return Err("Emissor de autenticação inválido.".into());
+        return Err("Invalid authentication issuer.".into());
     }
     trusted_auth_url(&metadata.jwks_uri)?;
     Ok(metadata)
@@ -245,12 +243,12 @@ async fn validate_identity(
         .timeout(Duration::from_secs(20))
         .send()
         .await
-        .map_err(|_| "Não foi possível verificar a identidade OpenAI.")?
+        .map_err(|_| "Could not verify the OpenAI identity.")?
         .error_for_status()
-        .map_err(|_| "Não foi possível obter as chaves OpenAI.")?
+        .map_err(|_| "Could not retrieve OpenAI keys.")?
         .json()
         .await
-        .map_err(|_| "Chaves de identidade inválidas.")?;
+        .map_err(|_| "Invalid identity keys.")?;
     verify_identity(token, &keys, client_id, nonce)
 }
 
@@ -260,18 +258,18 @@ fn verify_identity(
     client_id: &str,
     nonce: &str,
 ) -> Result<Claims, String> {
-    let header = decode_header(token).map_err(|_| "Token de identidade inválido.")?;
+    let header = decode_header(token).map_err(|_| "Invalid identity token.")?;
     if !matches!(header.alg, Algorithm::RS256 | Algorithm::ES256) {
-        return Err("Assinatura de identidade não suportada.".into());
+        return Err("Unsupported identity signature.".into());
     }
     let key = keys
         .find(
             header
                 .kid
                 .as_deref()
-                .ok_or("Identificador de assinatura em falta.")?,
+                .ok_or("Missing signature identifier.")?,
         )
-        .ok_or("Chave de identidade desconhecida.")?;
+        .ok_or("Unknown identity key.")?;
     let mut validation = Validation::new(header.alg);
     validation.set_audience(&[client_id]);
     validation.set_issuer(&[AUTH]);
@@ -280,10 +278,10 @@ fn verify_identity(
     validation.leeway = 30;
     let claims = decode::<Claims>(
         token,
-        &DecodingKey::from_jwk(key).map_err(|_| "Chave de identidade inválida.")?,
+        &DecodingKey::from_jwk(key).map_err(|_| "Invalid identity key.")?,
         &validation,
     )
-    .map_err(|_| "A identidade OpenAI não pôde ser validada.")?
+    .map_err(|_| "The OpenAI identity could not be validated.")?
     .claims;
     if claims.sub.is_empty()
         || !bool::from(
@@ -295,29 +293,37 @@ fn verify_identity(
                 .ct_eq(nonce.as_bytes()),
         )
     {
-        return Err("A sessão devolvida não corresponde ao login iniciado.".into());
+        return Err("The returned session does not match the login request.".into());
     }
     Ok(claims)
 }
 
 #[tauri::command]
-pub async fn openai_accounts(state: State<'_, OpenAi>) -> Result<Vec<Account>, String> {
-    Ok(state
-        .credentials
-        .lock()
-        .await
-        .accounts
-        .iter()
-        .map(|(id, account)| Account {
-            environment_id: id.clone(),
-            email: account.email.clone(),
-            connected: account.tokens.is_some(),
-            eligible: account
-                .tokens
-                .as_ref()
-                .is_some_and(|tokens| tokens.scopes.iter().any(|scope| scope == PERMISSION)),
-        })
-        .collect())
+pub async fn openai_accounts(
+    state: State<'_, OpenAi>,
+    locale: Option<String>,
+) -> Result<Vec<Account>, String> {
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<Vec<Account>, String> = async {
+        Ok(state
+            .credentials
+            .lock()
+            .await
+            .accounts
+            .iter()
+            .map(|(id, account)| Account {
+                environment_id: id.clone(),
+                email: account.email.clone(),
+                connected: account.tokens.is_some(),
+                eligible: account
+                    .tokens
+                    .as_ref()
+                    .is_some_and(|tokens| tokens.scopes.iter().any(|scope| scope == PERMISSION)),
+            })
+            .collect())
+    }
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 fn callback_parameters(
@@ -325,7 +331,7 @@ fn callback_parameters(
     expected_state: &str,
     previous_client: Option<&str>,
 ) -> Result<Option<(String, String)>, String> {
-    let url = Url::parse(&format!("http://127.0.0.1{target}")).map_err(|_| "Callback inválido.")?;
+    let url = Url::parse(&format!("http://127.0.0.1{target}")).map_err(|_| "Invalid callback.")?;
     if url.path() != "/auth/callback" {
         return Ok(None);
     }
@@ -335,7 +341,7 @@ fn callback_parameters(
             .insert(key.into_owned(), value.into_owned())
             .is_some()
         {
-            return Err("Callback duplicado.".into());
+            return Err("Duplicate callback.".into());
         }
     }
     if !bool::from(
@@ -348,22 +354,22 @@ fn callback_parameters(
         return Ok(None);
     }
     if values.contains_key("error") {
-        return Err("Login cancelado ou não autorizado na OpenAI.".into());
+        return Err("Login canceled or not authorized by OpenAI.".into());
     }
     let client_id = match (previous_client, values.get("client_id")) {
         (Some(previous), Some(returned)) if previous != returned => {
-            return Err("A conta devolvida não corresponde à selecionada.".into())
+            return Err("The returned account does not match the selected account.".into())
         }
         (Some(previous), _) => previous.to_string(),
         (None, Some(returned)) if !returned.is_empty() && returned != "dynamic_agent_client" => {
             returned.clone()
         }
-        _ => return Err("A OpenAI não concluiu o registo desta aplicação.".into()),
+        _ => return Err("OpenAI did not complete this app's registration.".into()),
     };
     let code = values
         .remove("code")
         .filter(|code| !code.is_empty())
-        .ok_or("Código de autorização em falta.")?;
+        .ok_or("Missing authorization code.")?;
     Ok(Some((code, client_id)))
 }
 
@@ -371,12 +377,13 @@ async fn receive_callback(
     listener: TcpListener,
     state: &str,
     previous: Option<&str>,
+    locale: crate::i18n::Locale,
 ) -> Result<(String, String), String> {
     loop {
         let (mut socket, _) = listener
             .accept()
             .await
-            .map_err(|_| "Não foi possível receber o login.")?;
+            .map_err(|_| "Could not receive the login callback.")?;
         let mut data = Vec::new();
         let read = tokio::time::timeout(Duration::from_secs(3), async {
             let mut buffer = [0; 1024];
@@ -408,7 +415,7 @@ async fn receive_callback(
             Ok(None) => super::auth_page::CallbackState::Invalid,
             Err(_) => super::auth_page::CallbackState::Denied,
         };
-        let response = super::auth_page::callback_response(page_state);
+        let response = super::auth_page::callback_response(page_state, locale);
         let _ = socket.write_all(response.as_bytes()).await;
         if let Some(value) = result? {
             return Ok(value);
@@ -422,35 +429,46 @@ pub async fn openai_login(
     database: State<'_, super::Database>,
     state: State<'_, OpenAi>,
     environment_id: String,
+
+    locale: Option<String>,
 ) -> Result<(), String> {
-    ensure_environment(&database, &environment_id)?;
-    let cancel = CancellationToken::new();
-    {
-        let mut pending = state.login.lock().await;
-        if pending.is_some() {
-            return Err("Já existe um login em curso. Conclui ou cancela esse login.".into());
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<(), String> = async {
+        ensure_environment(&database, &environment_id)?;
+        let cancel = CancellationToken::new();
+        {
+            let mut pending = state.login.lock().await;
+            if pending.is_some() {
+                return Err("A login is already in progress. Complete or cancel it first.".into());
+            }
+            *pending = Some((environment_id.clone(), cancel.clone()));
         }
-        *pending = Some((environment_id.clone(), cancel.clone()));
+        let result = tokio::select! {
+            _ = cancel.cancelled() => Err("Login canceled.".into()),
+            result = login_inner(&state, &environment_id, cancel.clone(), language) => result,
+        };
+        *state.login.lock().await = None;
+        let _ = app.emit(
+            "openai-account-changed",
+            LoginEvent {
+                environment_id,
+                error: result
+                    .as_ref()
+                    .err()
+                    .map(|error| crate::i18n::message(error, language)),
+            },
+        );
+        result
     }
-    let result = tokio::select! {
-        _ = cancel.cancelled() => Err("Login cancelado.".into()),
-        result = login_inner(&state, &environment_id, cancel.clone()) => result,
-    };
-    *state.login.lock().await = None;
-    let _ = app.emit(
-        "openai-account-changed",
-        LoginEvent {
-            environment_id,
-            error: result.as_ref().err().cloned(),
-        },
-    );
-    result
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 async fn login_inner(
     state: &OpenAi,
     environment_id: &str,
     cancel: CancellationToken,
+    locale: crate::i18n::Locale,
 ) -> Result<(), String> {
     let (host_id, previous) = {
         let credentials = state.credentials.lock().await;
@@ -461,12 +479,12 @@ async fn login_inner(
     };
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
-        .map_err(|_| "Não foi possível abrir o callback local.")?;
+        .map_err(|_| "Could not open the local callback.")?;
     let redirect = format!(
         "http://127.0.0.1:{}/auth/callback",
         listener
             .local_addr()
-            .map_err(|_| "Callback indisponível.")?
+            .map_err(|_| "Callback unavailable.")?
             .port()
     );
     let csrf = random_secret()?;
@@ -513,17 +531,15 @@ async fn login_inner(
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
-        .map_err(|_| {
-            "Não foi possível abrir o navegador. Verifica se o xdg-open está instalado."
-        })?;
+        .map_err(|_| "Could not open the browser. Check that xdg-open is installed.")?;
     tauri::async_runtime::spawn_blocking(move || {
         let mut browser = browser;
         let _ = browser.wait();
     });
     let (code, client_id) = tokio::select! {
-        _ = cancel.cancelled() => return Err("Login cancelado.".into()),
-        result = tokio::time::timeout(Duration::from_secs(240), receive_callback(listener, &csrf, previous.as_ref().map(|account| account.client_id.as_str()))) =>
-            result.map_err(|_| "O login expirou. Tenta novamente.")??,
+        _ = cancel.cancelled() => return Err("Login canceled.".into()),
+        result = tokio::time::timeout(Duration::from_secs(240), receive_callback(listener, &csrf, previous.as_ref().map(|account| account.client_id.as_str()), locale)) =>
+            result.map_err(|_| "Login timed out. Try again.")??,
     };
     let response = state
         .client
@@ -539,31 +555,31 @@ async fn login_inner(
         ])
         .send()
         .await
-        .map_err(|_| "Não foi possível concluir o login na OpenAI.")?;
+        .map_err(|_| "Could not complete login with OpenAI.")?;
     let tokens = read_tokens(response).await?;
     let identity_token = tokens
         .id_token
         .as_deref()
-        .ok_or("A OpenAI não devolveu um token de identidade.")?;
+        .ok_or("OpenAI did not return an identity token.")?;
     let claims = validate_identity(&state.client, identity_token, &client_id, &nonce).await?;
     if previous
         .as_ref()
         .is_some_and(|previous| previous.subject != claims.sub)
     {
-        return Err("Esta identidade é diferente da conta associada ao ambiente.".into());
+        return Err("This identity differs from the account linked to the environment.".into());
     }
     let account = Registration {
         client_id,
         subject: claims.sub,
-        email: claims.email.unwrap_or_else(|| "Conta OpenAI".into()),
+        email: claims.email.unwrap_or_else(|| "OpenAI account".into()),
         tokens: Some(convert_tokens(tokens, None)?),
     };
     if cancel.is_cancelled() {
-        return Err("Login cancelado.".into());
+        return Err("Login canceled.".into());
     }
     let mut credentials = state.credentials.lock().await;
     if cancel.is_cancelled() {
-        return Err("Login cancelado.".into());
+        return Err("Login canceled.".into());
     }
     let mut updated = Credentials {
         host_id: credentials.host_id.clone(),
@@ -576,21 +592,32 @@ async fn login_inner(
 }
 
 #[tauri::command]
-pub async fn openai_cancel_login(state: State<'_, OpenAi>) -> Result<(), String> {
-    if let Some((_, cancel)) = state.login.lock().await.as_ref() {
-        cancel.cancel();
+pub async fn openai_cancel_login(
+    state: State<'_, OpenAi>,
+    locale: Option<String>,
+) -> Result<(), String> {
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<(), String> = async {
+        if let Some((_, cancel)) = state.login.lock().await.as_ref() {
+            cancel.cancel();
+        }
+        Ok(())
     }
-    Ok(())
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 async fn read_tokens(response: reqwest::Response) -> Result<TokenResponse, String> {
     if !response.status().is_success() {
-        return Err("A OpenAI recusou a autorização. Volta a ligar a conta ou verifica a elegibilidade da subscrição.".into());
+        return Err(
+            "OpenAI denied authorization. Reconnect the account or check subscription eligibility."
+                .into(),
+        );
     }
     response
         .json()
         .await
-        .map_err(|_| "Resposta de autenticação inválida.".into())
+        .map_err(|_| "Invalid authentication response.".into())
 }
 
 fn convert_tokens(response: TokenResponse, previous: Option<&Tokens>) -> Result<Tokens, String> {
@@ -598,7 +625,7 @@ fn convert_tokens(response: TokenResponse, previous: Option<&Tokens>) -> Result<
         || response.access_token.is_empty()
         || response.expires_in == 0
     {
-        return Err("Credenciais OpenAI inválidas.".into());
+        return Err("Invalid OpenAI credentials.".into());
     }
     let scopes = match response.scope {
         Some(scopes) => scopes.split_whitespace().map(str::to_string).collect(),
@@ -613,7 +640,7 @@ fn convert_tokens(response: TokenResponse, previous: Option<&Tokens>) -> Result<
         id_token: response
             .id_token
             .or_else(|| previous.map(|tokens| tokens.id_token.clone()))
-            .ok_or("Identidade OpenAI em falta.")?,
+            .ok_or("Missing OpenAI identity.")?,
         expires_at: now().saturating_add(response.expires_in),
         scopes,
     })
@@ -626,19 +653,19 @@ pub(crate) async fn access_token(state: &OpenAi, environment_id: &str) -> Result
         .accounts
         .get(environment_id)
         .cloned()
-        .ok_or("Liga uma conta OpenAI a este ambiente.")?;
+        .ok_or("Connect an OpenAI account to this environment.")?;
     let mut tokens = account
         .tokens
         .clone()
-        .ok_or("Volta a ligar a conta deste ambiente.")?;
+        .ok_or("Reconnect this environment's account.")?;
     if !tokens.scopes.iter().any(|scope| scope == PERMISSION) {
-        return Err("A conta não autorizou a utilização da subscrição neste app. Volta a ligar a conta e verifica as permissões.".into());
+        return Err("The account did not authorize subscription use in this app. Reconnect the account and check permissions.".into());
     }
     if tokens.expires_at <= now().saturating_add(60) {
         let refresh = tokens
             .refresh_token
             .as_deref()
-            .ok_or("A sessão expirou. Volta a ligar a conta.")?;
+            .ok_or("The session expired. Reconnect the account.")?;
         let response = state
             .client
             .post(format!("{AUTH}/api/accounts/oauth/token"))
@@ -651,10 +678,10 @@ pub(crate) async fn access_token(state: &OpenAi, environment_id: &str) -> Result
             ])
             .send()
             .await
-            .map_err(|_| "Não foi possível renovar a sessão OpenAI.")?;
+            .map_err(|_| "Could not refresh the OpenAI session.")?;
         tokens = convert_tokens(read_tokens(response).await?, Some(&tokens))?;
         if !tokens.scopes.iter().any(|scope| scope == PERMISSION) {
-            return Err("A permissão da subscrição deixou de estar disponível.".into());
+            return Err("Subscription permission is no longer available.".into());
         }
         let mut updated = Credentials {
             host_id: credentials.host_id.clone(),
@@ -663,7 +690,7 @@ pub(crate) async fn access_token(state: &OpenAi, environment_id: &str) -> Result
         updated
             .accounts
             .get_mut(environment_id)
-            .ok_or("Conta indisponível.")?
+            .ok_or("Account unavailable.")?
             .tokens = Some(tokens.clone());
         persist(&state.path, &updated)?;
         *credentials = updated;
@@ -676,48 +703,64 @@ pub async fn openai_models(
     database: State<'_, super::Database>,
     state: State<'_, OpenAi>,
     environment_id: String,
+
+    locale: Option<String>,
 ) -> Result<Vec<Model>, String> {
-    ensure_environment(&database, &environment_id)?;
-    let token = access_token(&state, &environment_id).await?;
-    let response = state
-        .client
-        .get(format!("{API}/models"))
-        .bearer_auth(token)
-        .send()
-        .await
-        .map_err(|_| "Não foi possível obter os modelos.")?;
-    if !response.status().is_success() {
-        return Err(api_error(response.status().as_u16(), ""));
-    }
-    let value: Value = response
-        .json()
-        .await
-        .map_err(|_| "Catálogo de modelos inválido.")?;
-    Ok(value
-        .get("models")
-        .and_then(Value::as_array)
-        .ok_or("Catálogo de modelos não suportado.")?
-        .iter()
-        .filter(|item| item["visibility"] == "list")
-        .filter_map(|item| {
-            Some(Model {
-                slug: item["slug"].as_str()?.into(),
-                name: item["display_name"].as_str()?.into(),
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<Vec<Model>, String> = async {
+        ensure_environment(&database, &environment_id)?;
+        let token = access_token(&state, &environment_id).await?;
+        let response = state
+            .client
+            .get(format!("{API}/models"))
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(|_| "Could not retrieve models.")?;
+        if !response.status().is_success() {
+            return Err(api_error(response.status().as_u16(), ""));
+        }
+        let value: Value = response
+            .json()
+            .await
+            .map_err(|_| "Invalid model catalog.")?;
+        Ok(value
+            .get("models")
+            .and_then(Value::as_array)
+            .ok_or("Unsupported model catalog.")?
+            .iter()
+            .filter(|item| item["visibility"] == "list")
+            .filter_map(|item| {
+                Some(Model {
+                    slug: item["slug"].as_str()?.into(),
+                    name: item["display_name"].as_str()?.into(),
+                })
             })
-        })
-        .collect())
+            .collect())
+    }
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 pub(crate) fn api_error(status: u16, code: &str) -> String {
     match (status, code) {
-        (_, "subscription_sharing_user_not_eligible") => "A subscrição ou o workspace não permite usar este app.",
-        (_, "subscription_sharing_usage_limit_exceeded") | (429, _) => "O limite de utilização foi atingido. Consulta os limites em ChatGPT > Definições > Utilização.",
-        (_, "subscription_sharing_usage_unavailable") | (503, _) => "A utilização da subscrição está temporariamente indisponível. Tenta mais tarde.",
-        (401, _) => "A sessão OpenAI deixou de ser válida. Volta a ligar a conta.",
-        (403, _) => "A conta ou o workspace não autorizou este pedido.",
-        (400, _) | (404, _) => "O modelo ou o pedido não está disponível nesta conta. Atualiza a lista de modelos.",
-        _ => "O pedido à OpenAI falhou. Tenta novamente mais tarde.",
-    }.into()
+        (_, "subscription_sharing_user_not_eligible") => {
+            "The subscription or workspace does not allow this app."
+        }
+        (_, "subscription_sharing_usage_limit_exceeded") | (429, _) => {
+            "The usage limit has been reached. Check your limits in ChatGPT > Settings > Usage."
+        }
+        (_, "subscription_sharing_usage_unavailable") | (503, _) => {
+            "Subscription usage is temporarily unavailable. Try again later."
+        }
+        (401, _) => "The OpenAI session is no longer valid. Reconnect the account.",
+        (403, _) => "The account or workspace did not authorize this request.",
+        (400, _) | (404, _) => {
+            "The model or request is unavailable for this account. Refresh the model list."
+        }
+        _ => "The OpenAI request failed. Try again later.",
+    }
+    .into()
 }
 
 fn chat_input(
@@ -727,13 +770,13 @@ fn chat_input(
     model: &str,
 ) -> Result<Value, String> {
     if model.is_empty() || model.len() > 160 {
-        return Err("Seleciona um modelo válido.".into());
+        return Err("Select a valid model.".into());
     }
     let environment = workspace
         .environments
         .iter()
         .find(|environment| environment.id == environment_id)
-        .ok_or("Ambiente inexistente.")?;
+        .ok_or("Environment not found.")?;
     let conversation = workspace
         .conversations
         .iter()
@@ -741,16 +784,21 @@ fn chat_input(
             conversation.id == conversation_id
                 && conversation.environment_id == environment_id
                 && conversation.mode == "chat"
+                && !conversation.archived
         })
-        .ok_or("Esta conversa não é um Chat deste ambiente.")?;
+        .ok_or("This conversation is not a Chat in this environment.")?;
     let mut instructions = environment.instructions.clone();
     if let Some(project_id) = &conversation.project_id {
         let project = workspace
             .projects
             .iter()
-            .find(|project| &project.id == project_id && project.environment_id == environment_id)
-            .ok_or("Projeto indisponível neste ambiente.")?;
-        instructions.push_str("\n\nContexto do projeto:\n");
+            .find(|project| {
+                &project.id == project_id
+                    && project.environment_id == environment_id
+                    && !project.archived
+            })
+            .ok_or("Project unavailable in this environment.")?;
+        instructions.push_str("\n\nProject context:\n");
         instructions.push_str(&project.memory);
     }
     let input: Vec<Value> = conversation
@@ -760,16 +808,16 @@ fn chat_input(
         .map(|message| json!({"role": message.role, "content": message.content}))
         .collect();
     if input.is_empty() {
-        return Err("A conversa não tem mensagens para enviar.".into());
+        return Err("The conversation has no messages to send.".into());
     }
     Ok(
         json!({"model": model, "input": input, "instructions": instructions, "store": false, "stream": true}),
     )
 }
 
-fn extract_events(buffer: &mut Vec<u8>) -> Result<Vec<Value>, String> {
+pub(crate) fn extract_events(buffer: &mut Vec<u8>) -> Result<Vec<Value>, String> {
     if buffer.len() > 2_000_000 {
-        return Err("A resposta excedeu o tamanho suportado.".into());
+        return Err("The response exceeded the supported size.".into());
     }
     let mut result = vec![];
     loop {
@@ -787,7 +835,8 @@ fn extract_events(buffer: &mut Vec<u8>) -> Result<Vec<Value>, String> {
             break;
         };
         let bytes: Vec<u8> = buffer.drain(..index + length).collect();
-        let text = std::str::from_utf8(&bytes).map_err(|_| "A resposta contém texto inválido.")?;
+        let text =
+            std::str::from_utf8(&bytes).map_err(|_| "The response contains invalid text.")?;
         let data = text
             .lines()
             .filter_map(|line| line.strip_prefix("data:").map(str::trim_start))
@@ -797,7 +846,7 @@ fn extract_events(buffer: &mut Vec<u8>) -> Result<Vec<Value>, String> {
             continue;
         }
         result.push(
-            serde_json::from_str(&data).map_err(|_| "A resposta da OpenAI não pôde ser lida.")?,
+            serde_json::from_str(&data).map_err(|_| "The OpenAI response could not be read.")?,
         );
     }
     Ok(result)
@@ -812,47 +861,51 @@ pub async fn openai_chat(
     model: String,
     request_id: String,
     on_event: Channel<ChatEvent>,
+
+    locale: Option<String>,
 ) -> Result<(), String> {
-    let input = {
-        let connection = database
-            .0
-            .lock()
-            .map_err(|_| "Dados locais indisponíveis.")?;
-        chat_input(
-            &super::read_workspace(&connection)?,
-            &environment_id,
-            &conversation_id,
-            &model,
-        )?
-    };
-    let cancel = CancellationToken::new();
-    {
-        let mut requests = state.requests.lock().await;
-        if requests.contains_key(&request_id)
-            || requests
-                .values()
-                .any(|request| request.environment_id == environment_id)
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<(), String> = async {
+        let input = {
+            let connection = database.0.lock().map_err(|_| "Local data unavailable.")?;
+            chat_input(
+                &super::read_workspace(&connection)?,
+                &environment_id,
+                &conversation_id,
+                &model,
+            )?
+        };
+        let cancel = CancellationToken::new();
         {
-            return Err("Já existe uma resposta em curso neste ambiente.".into());
+            let mut requests = state.requests.lock().await;
+            if requests.contains_key(&request_id)
+                || requests
+                    .values()
+                    .any(|request| request.environment_id == environment_id)
+            {
+                return Err("A response is already in progress in this environment.".into());
+            }
+            requests.insert(
+                request_id.clone(),
+                Request {
+                    environment_id: environment_id.clone(),
+                    cancel: cancel.clone(),
+                },
+            );
         }
-        requests.insert(
-            request_id.clone(),
-            Request {
-                environment_id: environment_id.clone(),
-                cancel: cancel.clone(),
+        let token = access_token(&state, &environment_id).await;
+        let result = match token {
+            Err(error) => Err(error),
+            Ok(token) => tokio::select! {
+              _ = cancel.cancelled() => { let _ = on_event.send(ChatEvent::Interrupted); Ok(()) },
+              result = stream_chat(&state, token, input, &on_event) => result,
             },
-        );
+        };
+        state.requests.lock().await.remove(&request_id);
+        result
     }
-    let token = access_token(&state, &environment_id).await;
-    let result = match token {
-        Err(error) => Err(error),
-        Ok(token) => tokio::select! {
-          _ = cancel.cancelled() => { let _ = on_event.send(ChatEvent::Interrupted); Ok(()) },
-          result = stream_chat(&state, token, input, &on_event) => result,
-        },
-    };
-    state.requests.lock().await.remove(&request_id);
-    result
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 async fn stream_chat(
@@ -868,7 +921,7 @@ async fn stream_chat(
         .json(&input)
         .send()
         .await
-        .map_err(|_| "Não foi possível contactar a OpenAI. A mensagem ficou guardada.")?;
+        .map_err(|_| "Could not contact OpenAI. The message was saved.")?;
     if !response.status().is_success() {
         let status = response.status().as_u16();
         let error = response.json::<Value>().await.unwrap_or_default();
@@ -880,37 +933,47 @@ async fn stream_chat(
     let mut stream = response.bytes_stream();
     let mut buffer = vec![];
     let mut output_size = 0;
+    let mut summary_size = 0;
     while let Some(chunk) = tokio::time::timeout(Duration::from_secs(90), stream.next())
         .await
-        .map_err(|_| "A resposta demorou demasiado. Podes tentar novamente.")?
+        .map_err(|_| "The response timed out. You can try again.")?
     {
         buffer.extend_from_slice(
-            &chunk.map_err(|_| "A ligação foi interrompida. A resposta parcial foi preservada.")?,
+            &chunk.map_err(|_| {
+                "The connection was interrupted. The partial response was preserved."
+            })?,
         );
         for event in extract_events(&mut buffer)? {
             match event["type"].as_str().unwrap_or("") {
                 "response.output_text.delta" | "response.refusal.delta" => {
-                    let text = event["delta"]
-                        .as_str()
-                        .ok_or("Texto de resposta inválido.")?;
+                    let text = event["delta"].as_str().ok_or("Invalid response text.")?;
                     output_size += text.len();
                     if output_size > 2_000_000 {
-                        return Err("A resposta excedeu o tamanho suportado.".into());
+                        return Err("The response exceeded the supported size.".into());
                     }
                     channel
                         .send(ChatEvent::Delta { text: text.into() })
-                        .map_err(|_| "A conversa foi fechada.")?;
+                        .map_err(|_| "The conversation was closed.")?;
+                }
+                "response.reasoning_summary_text.delta" => {
+                    let text = event["delta"].as_str().ok_or("Invalid response text.")?;
+                    summary_size += text.len();
+                    if summary_size <= 20_000 {
+                        channel
+                            .send(ChatEvent::Summary { text: text.into() })
+                            .map_err(|_| "The conversation was closed.")?;
+                    }
                 }
                 "response.completed" => {
                     if event["response"]["status"] != "completed" {
-                        return Err("A resposta não foi concluída pela OpenAI.".into());
+                        return Err("OpenAI did not complete the response.".into());
                     }
                     channel
                         .send(ChatEvent::Completed {
                             input_tokens: event["response"]["usage"]["input_tokens"].as_u64(),
                             output_tokens: event["response"]["usage"]["output_tokens"].as_u64(),
                         })
-                        .map_err(|_| "A conversa foi fechada.")?;
+                        .map_err(|_| "The conversation was closed.")?;
                     return Ok(());
                 }
                 "response.failed" | "error" => {
@@ -922,15 +985,17 @@ async fn stream_chat(
                             .unwrap_or(""),
                     ))
                 }
-                "response.incomplete" => return Err(
-                    "A OpenAI devolveu uma resposta incompleta. O texto parcial foi preservado."
-                        .into(),
-                ),
+                "response.incomplete" => {
+                    return Err(
+                        "OpenAI returned an incomplete response. The partial text was preserved."
+                            .into(),
+                    )
+                }
                 _ => {}
             }
         }
     }
-    Err("A ligação terminou antes de a OpenAI concluir a resposta.".into())
+    Err("The connection ended before OpenAI completed the response.".into())
 }
 
 #[tauri::command]
@@ -938,14 +1003,21 @@ pub async fn openai_cancel_chat(
     state: State<'_, OpenAi>,
     environment_id: String,
     request_id: String,
+
+    locale: Option<String>,
 ) -> Result<(), String> {
-    if let Some(request) = state.requests.lock().await.get(&request_id) {
-        if request.environment_id != environment_id {
-            return Err("O pedido pertence a outro ambiente.".into());
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<(), String> = async {
+        if let Some(request) = state.requests.lock().await.get(&request_id) {
+            if request.environment_id != environment_id {
+                return Err("The request belongs to another environment.".into());
+            }
+            request.cancel.cancel();
         }
-        request.cancel.cancel();
+        Ok(())
     }
-    Ok(())
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 #[tauri::command]
@@ -953,70 +1025,77 @@ pub async fn openai_logout(
     app: tauri::AppHandle,
     state: State<'_, OpenAi>,
     environment_id: String,
+
+    locale: Option<String>,
 ) -> Result<bool, String> {
-    super::worker::cancel_environment(&app, &environment_id);
-    if let Some((pending_environment, cancel)) = state.login.lock().await.as_ref() {
-        if pending_environment == &environment_id {
-            cancel.cancel();
+    let language = crate::i18n::Locale::from_option(locale.as_deref());
+    let result: Result<bool, String> = async {
+        super::worker::cancel_environment(&app, &environment_id);
+        if let Some((pending_environment, cancel)) = state.login.lock().await.as_ref() {
+            if pending_environment == &environment_id {
+                cancel.cancel();
+            }
         }
-    }
-    for request in state.requests.lock().await.values() {
-        if request.environment_id == environment_id {
-            request.cancel.cancel();
+        for request in state.requests.lock().await.values() {
+            if request.environment_id == environment_id {
+                request.cancel.cancel();
+            }
         }
-    }
-    let mut credentials = state.credentials.lock().await;
-    let account = credentials
-        .accounts
-        .get(&environment_id)
-        .cloned()
-        .ok_or("Este ambiente não tem conta ligada.")?;
-    let mut revoked = false;
-    if let Some(refresh) = account
-        .tokens
-        .as_ref()
-        .and_then(|tokens| tokens.refresh_token.as_ref())
-    {
-        if let Ok(metadata) = discovery(&state.client).await {
-            if let Some(endpoint) = metadata
-                .revocation_endpoint
-                .and_then(|endpoint| trusted_auth_url(&endpoint).ok())
-            {
-                for attempt in 0..2 {
-                    let response = state
-                        .client
-                        .post(endpoint.clone())
-                        .timeout(Duration::from_secs(20))
-                        .form(&[
-                            ("token", refresh.as_str()),
-                            ("token_type_hint", "refresh_token"),
-                            ("client_id", account.client_id.as_str()),
-                        ])
-                        .send()
-                        .await;
-                    if response.is_ok_and(|response| response.status().is_success()) {
-                        revoked = true;
-                        break;
-                    }
-                    if attempt == 0 {
-                        tokio::time::sleep(Duration::from_secs(1)).await;
+        let mut credentials = state.credentials.lock().await;
+        let account = credentials
+            .accounts
+            .get(&environment_id)
+            .cloned()
+            .ok_or("This environment has no connected account.")?;
+        let mut revoked = false;
+        if let Some(refresh) = account
+            .tokens
+            .as_ref()
+            .and_then(|tokens| tokens.refresh_token.as_ref())
+        {
+            if let Ok(metadata) = discovery(&state.client).await {
+                if let Some(endpoint) = metadata
+                    .revocation_endpoint
+                    .and_then(|endpoint| trusted_auth_url(&endpoint).ok())
+                {
+                    for attempt in 0..2 {
+                        let response = state
+                            .client
+                            .post(endpoint.clone())
+                            .timeout(Duration::from_secs(20))
+                            .form(&[
+                                ("token", refresh.as_str()),
+                                ("token_type_hint", "refresh_token"),
+                                ("client_id", account.client_id.as_str()),
+                            ])
+                            .send()
+                            .await;
+                        if response.is_ok_and(|response| response.status().is_success()) {
+                            revoked = true;
+                            break;
+                        }
+                        if attempt == 0 {
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                        }
                     }
                 }
             }
         }
+        let mut updated = Credentials {
+            host_id: credentials.host_id.clone(),
+            accounts: credentials.accounts.clone(),
+        };
+        updated
+            .accounts
+            .get_mut(&environment_id)
+            .ok_or("Account unavailable.")?
+            .tokens = None;
+        persist(&state.path, &updated)?;
+        *credentials = updated;
+        Ok(revoked)
     }
-    let mut updated = Credentials {
-        host_id: credentials.host_id.clone(),
-        accounts: credentials.accounts.clone(),
-    };
-    updated
-        .accounts
-        .get_mut(&environment_id)
-        .ok_or("Conta indisponível.")?
-        .tokens = None;
-    persist(&state.path, &updated)?;
-    *credentials = updated;
-    Ok(revoked)
+    .await;
+    result.map_err(|error| crate::i18n::message(&error, language))
 }
 
 #[cfg(test)]
@@ -1027,8 +1106,9 @@ mod tests {
     async fn callback_listener_ignores_foreign_state_then_accepts_own_attempt() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let pending =
-            tokio::spawn(async move { receive_callback(listener, "own-state", None).await });
+        let pending = tokio::spawn(async move {
+            receive_callback(listener, "own-state", None, crate::i18n::Locale::English).await
+        });
         for (state, expected_status) in [
             ("foreign-state", "400 Bad Request"),
             ("own-state", "200 OK"),
@@ -1223,13 +1303,14 @@ mod tests {
 
     #[test]
     fn stream_handles_fragmented_unicode_and_crlf() {
-        let bytes = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"olá 🚀\"}\r\n\r\n"
-            .as_bytes();
+        let bytes =
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"hello 🚀\"}\r\n\r\n"
+                .as_bytes();
         let split = bytes.iter().position(|byte| *byte == 0xf0).unwrap() + 1;
         let mut buffer = bytes[..split].to_vec();
         assert!(extract_events(&mut buffer).unwrap().is_empty());
         buffer.extend_from_slice(&bytes[split..]);
-        assert_eq!(extract_events(&mut buffer).unwrap()[0]["delta"], "olá 🚀");
+        assert_eq!(extract_events(&mut buffer).unwrap()[0]["delta"], "hello 🚀");
         assert!(buffer.is_empty());
     }
 
@@ -1256,6 +1337,9 @@ mod tests {
             created_at: String::new(),
             role: "user".into(),
             status: None,
+            duration_ms: None,
+            summary: None,
+            worker_run_id: None,
         });
         workspace.conversations.push(conversation);
         assert!(chat_input(&workspace, "work", "conversation", "model").is_err());
@@ -1263,6 +1347,8 @@ mod tests {
             chat_input(&workspace, "personal", "conversation", "model").unwrap()["instructions"],
             "Private instructions"
         );
+        workspace.conversations[0].archived = true;
+        assert!(chat_input(&workspace, "personal", "conversation", "model").is_err());
         workspace.conversations[0].mode = "worker".into();
         assert!(chat_input(&workspace, "personal", "conversation", "model").is_err());
     }

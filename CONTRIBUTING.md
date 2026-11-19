@@ -43,6 +43,8 @@ It runs TypeScript checks, Vitest and Rust tests before packaging. The UI regres
 
 Do not add credentials, local databases, build caches, generated bundles or private project data to commits. Do not weaken approvals or isolation to make a test pass. Ask before adding dependencies or changing authentication contracts.
 
+Keep identifiers, database names, code comments and canonical system messages in English. User-facing text belongs in `src/locales/en.json` and `src/locales/pt.json`, including native errors and authentication pages. Use complete messages with named placeholders. Native commands accept an optional `locale` (`en` or `pt`) and default to English; the frontend passes its saved preference. Persist canonical messages and localize response copies so language changes do not rewrite user data. Keep both catalogs in sync and run the i18n tests when adding messages.
+
 ## Publishing
 
 1. Ensure the intended changes are on `release` and its Build workflow is green.
