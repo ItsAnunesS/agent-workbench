@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [dev, release]
+    branches: [dev]
   pull_request:
     branches: [dev, release]
   workflow_dispatch:
@@ -35,13 +35,8 @@ jobs:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
         run: node scripts/check-commit.mjs --range "$BEFORE" "$AFTER"
-      - name: Check release tooling
-        run: |
-          python3 scripts/version.py check
-          python3 scripts/test-version.py
-      - name: Build Docker environment
-        run: docker build --tag agent-workbench-builder .
-      - name: Check, test and build AppImage
+      - uses: ./.github/actions/setup-build
+      - name: Validate and package AppImage
         run: |
           docker run --rm --init \
             --user "$(id -u):$(id -g)" \

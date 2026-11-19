@@ -32,6 +32,17 @@ test("Conventional Commits select major/minor/patch and release docs and mainten
     );
   }
   assert.equal(
+    await analyzeRelease(
+      {},
+      {
+        cwd: process.cwd(),
+        logger,
+        commits: [{ hash: "b".repeat(40), message: "chore(release): v1.2.3" }],
+      },
+    ),
+    null,
+  );
+  assert.equal(
     await analyzeRelease({}, { cwd: process.cwd(), logger, commits: [] }),
     null,
   );
@@ -120,6 +131,43 @@ test("semantic-release plans from real tags without pushing tags or version comm
       join(cwd, "package.json"),
       JSON.stringify({
         name: "release-fixture",
+        version: "0.8.0",
+        private: true,
+      }),
+    );
+    git("add", "package.json");
+    git("commit", "-m", "chore(release): v0.8.0");
+    git("tag", "v0.8.0");
+    const releasedSnapshot = git("rev-parse", "HEAD");
+    git("checkout", "--detach", before);
+    git("commit", "--allow-empty", "-m", "fix: retain a newer source change");
+    git("merge", "--no-ff", "--no-commit", "-s", "ours", releasedSnapshot);
+    await writeFile(
+      join(cwd, "package.json"),
+      JSON.stringify({
+        name: "release-fixture",
+        version: "0.8.0",
+        private: true,
+      }),
+    );
+    git("add", "package.json");
+    git("commit", "-m", "chore(release): v0.8.0");
+    git("checkout", "-B", "release");
+    git("push", "origin", "release", "--tags");
+    const followup = await planRelease({
+      cwd,
+      env,
+      stdout: sink,
+      stderr: sink,
+    });
+    assert.equal(followup.version, "0.8.1");
+    assert.match(followup.notes, /retain a newer source change/);
+    assert.doesNotMatch(followup.notes, /chore\(release\)/);
+    const synchronizedTags = git("tag");
+    await writeFile(
+      join(cwd, "package.json"),
+      JSON.stringify({
+        name: "release-fixture",
         version: "0.6.0",
         private: true,
       }),
@@ -128,7 +176,7 @@ test("semantic-release plans from real tags without pushing tags or version comm
       planRelease({ cwd, env, stdout: sink, stderr: sink }),
       /latest reachable release tag/,
     );
-    assert.equal(git("tag"), tags);
+    assert.equal(git("tag"), synchronizedTags);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

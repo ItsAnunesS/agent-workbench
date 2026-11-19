@@ -4,6 +4,11 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+### Changed
+
+- Publish verified release snapshots even when newer commits arrive during the build, synchronizing version metadata without losing newer code, dependencies or unreleased notes, and retrying push races without rewriting history.
+- Avoid duplicate release-branch AppImage builds, npm installs, type checks and release-tooling tests. Reuse release-profile Rust compilation and add Docker/npm/Cargo CI caches plus stage timings while retaining all test suites.
+
 ## [0.9.0] - 2026-11-19
 
 ### Changed

@@ -35,6 +35,21 @@ def next_version(version, bump):
     raise ValueError("Unknown bump")
 
 
+def write_version(version, root=ROOT):
+    old = current_version(root)
+    if not SEMVER.fullmatch(version): raise ValueError("Expected X.Y.Z")
+    for name in ["package.json", "src-tauri/tauri.conf.json"]:
+        value = json.loads((root / name).read_text()); value["version"] = version
+        (root / name).write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+    lock = json.loads((root / "package-lock.json").read_text())
+    lock["version"] = lock["packages"][""]["version"] = version
+    (root / "package-lock.json").write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n")
+    cargo = root / "src-tauri/Cargo.toml"
+    cargo.write_text(cargo.read_text().replace(f'version = "{old}"', f'version = "{version}"', 1))
+    cargo_lock = root / "src-tauri/Cargo.lock"
+    cargo_lock.write_text(cargo_lock.read_text().replace(f'name = "agent-workbench"\nversion = "{old}"', f'name = "agent-workbench"\nversion = "{version}"', 1))
+
+
 def prepare(bump, root=ROOT, today=None, target_version=None, generated_notes=None):
     old = current_version(root)
     version = target_version or next_version(old, bump)
@@ -57,16 +72,7 @@ def prepare(bump, root=ROOT, today=None, target_version=None, generated_notes=No
         date = today or datetime.date.today().isoformat()
         remainder = after[len(after.split("\n## [", 1)[0]):]
         changelog = changelog.split(marker, 1)[0] + marker + f"\n## [{version}] - {date}\n\n{upcoming}\n" + remainder
-        for name in ["package.json", "src-tauri/tauri.conf.json"]:
-            value = json.loads((root / name).read_text()); value["version"] = version
-            (root / name).write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
-        lock = json.loads((root / "package-lock.json").read_text())
-        lock["version"] = lock["packages"][""]["version"] = version
-        (root / "package-lock.json").write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n")
-        cargo = root / "src-tauri/Cargo.toml"
-        cargo.write_text(cargo.read_text().replace(f'version = "{old}"', f'version = "{version}"', 1))
-        cargo_lock = root / "src-tauri/Cargo.lock"
-        cargo_lock.write_text(cargo_lock.read_text().replace(f'name = "agent-workbench"\nversion = "{old}"', f'name = "agent-workbench"\nversion = "{version}"', 1))
+        write_version(version, root)
         changelog_path.write_text(changelog)
     match = re.search(rf"(?ms)^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)", changelog)
     if not match: raise ValueError("The published version needs its own changelog section")

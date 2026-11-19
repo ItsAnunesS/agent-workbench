@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "check": "tsc -b",
     "test": "vitest run",
-    "test:release": "node --test scripts/test-release.mjs && python3 scripts/test-version.py",
+    "test:release": "node --test scripts/test-release.mjs && python3 scripts/test-version.py && python3 scripts/test-publish-version.py",
     "tauri": "tauri",
     "appimage": "bash scripts/build-appimage.sh"
   },

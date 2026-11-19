@@ -32,16 +32,26 @@ jobs:
         with:
           ref: release
           fetch-depth: 0
-      - name: Build Docker environment
-        run: docker build --tag agent-workbench-builder .
-      - name: Install and test release tooling
+      - name: Check commit subjects
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: node scripts/check-commit.mjs --range "$BEFORE" "$(git rev-parse HEAD)"
+      - uses: ./.github/actions/setup-build
+      - name: Preserve publication tooling
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-automation"
+          cp scripts/publish-version.py scripts/version.py "$RUNNER_TEMP/release-automation/"
+      - name: Select tagged snapshot for an explicit retry
+        if: github.event_name == 'workflow_dispatch' && inputs.bump == 'current'
+        run: git checkout --detach "v$(python3 scripts/version.py check)"
+      - name: Install dependencies once
         run: |
           docker run --rm --init \
             --user "$(id -u):$(id -g)" \
-            -e HOME=/tmp/workbench-release \
+            -e HOME=/tmp/workbench-release -e npm_config_cache=/workspace/.build-cache/npm \
             -v "$GITHUB_WORKSPACE:/workspace" \
-            agent-workbench-builder bash -c 'npm ci && node --test scripts/test-release.mjs'
-          python3 scripts/test-version.py
+            agent-workbench-builder npm ci --prefer-offline --no-audit --fund=false
           python3 scripts/version.py check
       - name: Prepare version and notes
         id: version
@@ -64,7 +74,7 @@ jobs:
             python3 scripts/version.py prepare --bump "$BUMP" \
               --notes "$RUNNER_TEMP/release-notes.md" --output "$GITHUB_OUTPUT"
           fi
-      - name: Check, test and build versioned AppImage
+      - name: Validate and package versioned AppImage
         if: steps.version.outputs.release == 'true'
         run: |
           docker run --rm --init \
@@ -72,7 +82,18 @@ jobs:
             -e HOME=/tmp/workbench-build \
             -e CARGO_HOME=/workspace/.build-cache/cargo \
             -v "$GITHUB_WORKSPACE:/workspace" \
-            agent-workbench-builder
+            agent-workbench-builder bash scripts/container-build.sh --dependencies-installed
+      - name: Upload verified snapshot
+        if: steps.version.outputs.release == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: agent-workbench-linux-${{ steps.version.outputs.source_sha }}
+          path: |
+            artifacts/*.AppImage
+            artifacts/*.AppImage.zsync
+            artifacts/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
       - name: Publish verified version
         if: steps.version.outputs.release == 'true'
         env:
@@ -82,11 +103,6 @@ jobs:
           SOURCE_SHA: ${{ steps.version.outputs.source_sha }}
         run: |
           set -euo pipefail
-          git fetch origin release --tags
-          if [ "$(git rev-parse origin/release)" != "$SOURCE_SHA" ]; then
-            echo "release changed during the build; the queued workflow will publish the new head." >&2
-            exit 1
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json CHANGELOG.md
@@ -100,8 +116,8 @@ jobs:
             fi
           else
             git tag -a "$TAG" -m "Agent Workbench $VERSION"
-            git push --atomic origin HEAD:release "refs/tags/$TAG"
           fi
+          python3 "$RUNNER_TEMP/release-automation/publish-version.py" --source "$SOURCE_SHA" --tag "$TAG"
           if gh release view "$TAG" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt"; then
             if [ "$(cat "$RUNNER_TEMP/release-draft.txt")" = false ]; then
               echo "This version is already published; keeping its assets unchanged."

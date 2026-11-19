@@ -4,7 +4,11 @@ import { execFileSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { analyzeRelease, notesOptions } from "./release-policy.mjs";
+import {
+  analyzeRelease,
+  notesOptions,
+  releaseCommits,
+} from "./release-policy.mjs";
 
 export async function planRelease({
   cwd = process.cwd(),
@@ -22,7 +26,10 @@ export async function planRelease({
         { analyzeCommits: analyzeRelease },
         {
           generateNotes: (options, context) =>
-            generateNotes(notesOptions, context),
+            generateNotes(notesOptions, {
+              ...context,
+              commits: releaseCommits(context.commits),
+            }),
         },
       ],
     },

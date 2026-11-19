@@ -28,10 +28,17 @@ export const notesOptions = {
   },
 };
 
+export function releaseCommits(commits) {
+  return commits.filter(
+    ({ message }) => !/^chore\(release\): v\d+\.\d+\.\d+(?:\s|$)/.test(message),
+  );
+}
+
 export async function analyzeRelease(_options, context) {
+  const commits = releaseCommits(context.commits);
   // Even a net-reverted batch gets a patch: every release-branch push is publishable.
   return (
-    (await analyzeCommits(commitOptions, context)) ||
-    (context.commits.length ? "patch" : null)
+    (await analyzeCommits(commitOptions, { ...context, commits })) ||
+    (commits.length ? "patch" : null)
   );
 }
