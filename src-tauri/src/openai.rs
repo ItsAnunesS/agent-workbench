@@ -66,6 +66,7 @@ pub struct Account {
     email: String,
     connected: bool,
     eligible: bool,
+    usage_account_id: String,
 }
 
 #[derive(Clone, Serialize)]
@@ -314,6 +315,7 @@ pub async fn openai_accounts(
             .map(|(id, account)| Account {
                 environment_id: id.clone(),
                 email: account.email.clone(),
+                usage_account_id: usage_key(id, account),
                 connected: account.tokens.is_some(),
                 eligible: account
                     .tokens
@@ -646,7 +648,39 @@ fn convert_tokens(response: TokenResponse, previous: Option<&Tokens>) -> Result<
     })
 }
 
+fn usage_key(environment: &str, account: &Registration) -> String {
+    format!(
+        "{:x}",
+        Sha256::digest(
+            json!([environment, account.subject, account.client_id])
+                .to_string()
+                .as_bytes()
+        )
+    )
+}
+pub(crate) async fn usage_account(state: &OpenAi, environment: &str) -> Option<String> {
+    state
+        .credentials
+        .lock()
+        .await
+        .accounts
+        .get(environment)
+        .filter(|account| account.tokens.is_some())
+        .map(|account| usage_key(environment, account))
+}
+pub(crate) struct AccessSession {
+    pub token: String,
+    pub account_key: String,
+}
 pub(crate) async fn access_token(state: &OpenAi, environment_id: &str) -> Result<String, String> {
+    access_session(state, environment_id)
+        .await
+        .map(|session| session.token)
+}
+pub(crate) async fn access_session(
+    state: &OpenAi,
+    environment_id: &str,
+) -> Result<AccessSession, String> {
     // Serializing refresh and persistence prevents rotating-token races in this process.
     let mut credentials = state.credentials.lock().await;
     let account = credentials
@@ -695,7 +729,10 @@ pub(crate) async fn access_token(state: &OpenAi, environment_id: &str) -> Result
         persist(&state.path, &updated)?;
         *credentials = updated;
     }
-    Ok(tokens.access_token)
+    Ok(AccessSession {
+        token: tokens.access_token,
+        account_key: usage_key(environment_id, &account),
+    })
 }
 
 #[tauri::command]
@@ -857,6 +894,7 @@ pub(crate) fn extract_events(buffer: &mut Vec<u8>) -> Result<Vec<Value>, String>
 pub async fn openai_chat(
     database: State<'_, super::Database>,
     state: State<'_, OpenAi>,
+    tracker: State<'_, crate::usage::Tracker>,
     environment_id: String,
     conversation_id: String,
     model: String,
@@ -895,12 +933,22 @@ pub async fn openai_chat(
                 },
             );
         }
-        let token = access_token(&state, &environment_id).await;
+        let token = access_session(&state, &environment_id).await;
         let result = match token {
             Err(error) => Err(error),
-            Ok(token) => tokio::select! {
-              _ = cancel.cancelled() => { let _ = on_event.send(ChatEvent::Interrupted); Ok(()) },
-              result = stream_chat(&state, token, input, &on_event) => result,
+            Ok(session) => {
+                let context = crate::usage::Context {
+                    environment: environment_id.clone(),
+                    account_key: session.account_key,
+                    conversation: conversation_id.clone(),
+                    model: model.clone(),
+                    source: "chat",
+                    fallback_id: format!("chat:{request_id}"),
+                };
+                tokio::select! {
+                    _ = cancel.cancelled() => { let _ = on_event.send(ChatEvent::Interrupted); Ok(()) },
+                    result = stream_chat(&state, session.token, input, &on_event, &database, &tracker, &context) => result,
+                }
             },
         };
         state.requests.lock().await.remove(&request_id);
@@ -915,6 +963,9 @@ async fn stream_chat(
     token: String,
     input: Value,
     channel: &Channel<ChatEvent>,
+    database: &super::Database,
+    tracker: &crate::usage::Tracker,
+    context: &crate::usage::Context,
 ) -> Result<(), String> {
     let response = state
         .client
@@ -946,6 +997,7 @@ async fn stream_chat(
             })?,
         );
         for event in extract_events(&mut buffer)? {
+            crate::usage::event(database, tracker, context, &event);
             match event["type"].as_str().unwrap_or("") {
                 "response.output_text.delta" | "response.refusal.delta" => {
                     let text = event["delta"].as_str().ok_or("Invalid response text.")?;
@@ -1228,6 +1280,24 @@ mod tests {
         );
     }
 
+    #[test]
+    fn usage_identity_is_opaque_and_scoped_to_account_registration_and_environment() {
+        let mut account = Registration {
+            client_id: "first-client".into(),
+            subject: "private-subject".into(),
+            email: "same@example.test".into(),
+            tokens: None,
+        };
+        let first = usage_key("personal", &account);
+        assert_eq!(first.len(), 64);
+        assert_eq!(first, usage_key("personal", &account));
+        assert_ne!(first, usage_key("work", &account));
+        account.subject = "other-subject".into();
+        assert_ne!(first, usage_key("personal", &account));
+        account.subject = "private-subject".into();
+        account.client_id = "second-client".into();
+        assert_ne!(first, usage_key("personal", &account));
+    }
     #[test]
     fn credentials_are_atomic_private_and_separate_for_equal_emails() {
         let directory = std::env::temp_dir().join(format!(

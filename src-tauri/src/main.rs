@@ -8,6 +8,7 @@ mod openai;
 mod settings;
 mod terminal;
 mod tools;
+mod usage;
 mod worker;
 
 use rusqlite::{params, Connection};
@@ -200,6 +201,7 @@ fn initialize_database(connection: &Connection) -> rusqlite::Result<()> {
     settings::initialize(connection)?;
     browser::initialize(connection)?;
     terminal::initialize(connection)?;
+    usage::initialize(connection)?;
     connection.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS workspace (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT NOT NULL);")?;
     Ok(())
 }
@@ -316,6 +318,8 @@ fn app_commands(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
                 openai::openai_chat,
                 openai::openai_cancel_chat,
                 openai::openai_logout,
+                usage::openai_usage,
+                usage::openai_manage_usage,
                 worker::worker_runtime,
                 worker::worker_prepare,
                 worker::worker_history,
@@ -342,6 +346,7 @@ fn main() {
         .manage(desktop_integration)
         .manage(browser::Browser::default())
         .manage(terminal::Terminals::default())
+        .manage(usage::Tracker::default())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();

@@ -7,6 +7,7 @@ export interface Account {
   email: string;
   connected: boolean;
   eligible: boolean;
+  usageAccountId?: string;
 }
 export interface Model {
   slug: string;

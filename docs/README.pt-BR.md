@@ -65,6 +65,10 @@ O Worker altera a pasta do projeto diretamente. Cancelar uma tarefa não desfaz 
 3. Escolha um ambiente e abra **Workspace settings** pelo cartão OpenAI no rodapé da barra lateral para conectar a conta desse workspace.
 4. Para usar o Worker, inicie o Docker, prepare o runtime nas definições globais e selecione a pasta do projeto e o modelo.
 
+Use **Usage** acima do cartão OpenAI na barra lateral para consultar tokens de entrada, saída, entrada em cache e raciocínio registrados localmente, atividade diária e respostas recentes. As contagens vêm dos dados efetivamente reportados pela OpenAI no Chat, Worker e nas revisões automáticas de aprovação. Cache e raciocínio são subconjuntos, sem soma adicional. O histórico persiste neste dispositivo, separado por ambiente e registro da conta, e guarda metadados de utilização, sem prompts nem credenciais. Pedidos anteriores não são importados, interrupções podem não reportar utilização e contagens ausentes aparecem como desconhecidas. Desconectar a conta oculta seu histórico. Um novo registro de conta inicia um histórico separado.
+
+A conexão atual com Sign in with ChatGPT não oferece um endpoint documentado para limite restante do plano, reposições ou créditos. **Manage usage** abre a [página oficial de utilização do ChatGPT](https://chatgpt.com/settings/usage). Os totais locais não medem o limite restante, a utilização em outros apps ou o faturamento.
+
 O acesso pela assinatura depende da elegibilidade da conta e dos modelos liberados pela OpenAI. O plano ChatGPT não garante acesso ilimitado. O histórico pertence ao app; conversas oficiais do ChatGPT e do Codex não são importadas.
 
 No Linux, o AppImage registra o atalho e o logo no menu de aplicativos do usuário. Se mover o arquivo, abra-o uma vez no novo local. A opção **Reparar integração**, nas definições globais, atualiza o atalho.

@@ -2,6 +2,8 @@ import { GlobalInstructionsSettings } from "./components/GlobalInstructionsSetti
 import { InteractiveBrandMark } from "./components/InteractiveBrandMark";
 import { ToolPanel } from "./components/ToolPanel";
 import { TerminalSettings } from "./components/TerminalSettings";
+import { UsageButton, UsagePanel } from "./components/UsagePanel";
+import { useUsage } from "./usage";
 import { Fragment } from "react";
 import {
   WorkspaceSidebar,
@@ -81,6 +83,7 @@ type Dialog =
   | "environmentInstructions"
   | "settings"
   | "globalSettings"
+  | "usage"
   | null;
 const previewWorkspace: Workspace = {
   version: 1,
@@ -135,9 +138,15 @@ export default function App() {
   const requestRef = useRef<string | null>(null);
   const [lastUsage, setLastUsage] = useState<{
     environmentId: string;
-    input: number;
-    output: number;
+    input: number | null;
+    output: number | null;
   } | null>(null);
+  const usage = useUsage(
+    environmentId,
+    openai.account?.usageAccountId || openai.account?.email || "",
+    !!openai.account?.connected,
+    `${activeRequest?.id || ""}:${worker.active?.id || ""}:${worker.active?.status || ""}:${dialog === "usage"}`,
+  );
   const saveQueue = useRef(Promise.resolve());
   const endRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -292,8 +301,8 @@ export default function App() {
         outcome.status = "completed";
         setLastUsage({
           environmentId: target.environmentId,
-          input: event.input_tokens || 0,
-          output: event.output_tokens || 0,
+          input: event.input_tokens ?? null,
+          output: event.output_tokens ?? null,
         });
       } else if (event.type === "interrupted") {
         outcome.status = "interrupted";
@@ -842,6 +851,11 @@ export default function App() {
             busyIds={busyIds}
           />
         </div>
+        <UsageButton
+          usage={usage}
+          connected={!!openai.account?.connected}
+          onOpen={() => openDialog("usage")}
+        />
         <button
           className="sidebar-footer"
           aria-label={t("Workspace settings")}
@@ -1706,7 +1720,10 @@ export default function App() {
                   {lastUsage?.environmentId === environmentId
                     ? t(
                         "Last response: {input} input tokens and {output} output tokens.",
-                        { input: lastUsage.input, output: lastUsage.output },
+                        {
+                          input: lastUsage.input ?? t("Not reported"),
+                          output: lastUsage.output ?? t("Not reported"),
+                        },
                       )
                     : t("The account is linked only to this environment.")}
                 </p>
@@ -1740,7 +1757,7 @@ export default function App() {
           }}
         >
           <section
-            className={`modal ${["settings", "globalSettings"].includes(dialog) ? "settings-modal" : ""}`}
+            className={`modal ${["settings", "globalSettings"].includes(dialog) ? "settings-modal" : dialog === "usage" ? "usage-modal" : ""}`}
             ref={modalRef}
             role="dialog"
             aria-modal="true"
@@ -1784,12 +1801,20 @@ export default function App() {
                         ? t("Project memory")
                         : t("Environment instructions")
                       : t(
-                          dialog === "globalSettings"
-                            ? "Global settings"
-                            : "Workspace settings",
+                          dialog === "usage"
+                            ? "Usage"
+                            : dialog === "globalSettings"
+                              ? "Global settings"
+                              : "Workspace settings",
                         )}
             </h2>
-            {dialog === "globalSettings" ? (
+            {dialog === "usage" ? (
+              <UsagePanel
+                usage={usage}
+                environmentName={environment.name}
+                connected={!!openai.account?.connected}
+              />
+            ) : dialog === "globalSettings" ? (
               <>
                 <p className="modal-description">
                   {t(

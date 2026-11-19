@@ -65,6 +65,10 @@ Worker edits the project folder directly. Cancelling a task does not revert edit
 3. Choose an environment, then open **Workspace settings** using the OpenAI card at the bottom of its sidebar to connect its account.
 4. To use Worker, start Docker, prepare the runtime in **Global settings**, then select a project folder and a model.
 
+Use **Usage** above the OpenAI sidebar card to see locally recorded input, output, cached input and reasoning tokens, daily activity and recent responses. Counts come from actual OpenAI response usage for Chat, Worker and automatic approval reviews. Cached input and reasoning are subsets, not additional charges. The ledger persists on this device and is isolated by environment and account registration; it stores usage metadata, never prompts or credentials. Older requests are not imported, interrupted requests may lack usage, and missing counts are shown as unknown. Disconnecting an account hides its recorded usage. A new account registration starts a separate history.
+
+The current Sign in with ChatGPT connection does not expose remaining plan allowance, reset times or credits through a documented endpoint. **Manage usage** opens the [official ChatGPT usage page](https://chatgpt.com/settings/usage). Local token totals do not measure remaining allowance, other apps or billing.
+
 Subscription access depends on account eligibility and the models granted by OpenAI. A ChatGPT plan does not imply unrestricted access. The app keeps its own conversation history; it does not import the official ChatGPT or Codex history.
 
 On Linux, the AppImage registers its launcher and logo in the current user's application menu. If the AppImage moves, open it once from its new location. **Global settings > Repair integration** refreshes the launcher.
