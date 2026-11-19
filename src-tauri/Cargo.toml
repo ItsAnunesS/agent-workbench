@@ -1,6 +1,6 @@
 [package]
 name = "agent-workbench"
-version = "0.7.0"
+version = "0.8.0"
 description = "A local workspace for AI conversations and coding agents"
 edition = "2021"
 license = "MIT"

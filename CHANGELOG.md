@@ -4,6 +4,8 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-19
+
 ### Added
 
 - Automatic releases on pushes to `release`, using semantic-release Conventional Commit analysis, synchronized application versions, generated notes, immutable tags and draft-first AppImage publication. Planning receives GitHub Actions token authentication inside Docker. Documentation and maintenance changes also trigger patch releases; generated version commits do not recurse.
@@ -27,6 +29,41 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 - MIT licensing for source code, with reserved rights for original branding and separate third-party notices.
 - Docker-based GitHub Actions builds, manual version publication and Conventional Commit checks.
 - A small `dev` / `release` workflow with direct fixes supported.
+
+### Features
+
+* **app:** localize and improve chat and project workflows ([cae947e](https://github.com/ItsAnunesS/agent-workbench/commit/cae947e8e5017d57e7f127bf9b805a75e8e44b9e))
+* **branding:** add ICO favicon fallback ([96a2ee3](https://github.com/ItsAnunesS/agent-workbench/commit/96a2ee3060ecbe3a626873a9bfe130c3a8d83fe7))
+* **branding:** add interactive Three.js logo ([e200757](https://github.com/ItsAnunesS/agent-workbench/commit/e2007578536bd4b40445e85374a89ea74f189bd0))
+* **linux:** support AppImage updates in compatible managers ([03ccd34](https://github.com/ItsAnunesS/agent-workbench/commit/03ccd340bfe1463f6ef35ccc4db4019fbbf468f1))
+* **settings:** add global instructions and Git conventions ([ade1baf](https://github.com/ItsAnunesS/agent-workbench/commit/ade1baf3c635d956a8109ec8cf2fe2aeaaa9e8ba))
+* **tools:** add scoped files, terminal and browser tabs ([127e4c8](https://github.com/ItsAnunesS/agent-workbench/commit/127e4c8b77aa2fb0468d529e6582ada8e9706693))
+
+### Bug Fixes
+
+* **branding:** correct favicon declarations and refresh cache ([7f77ad3](https://github.com/ItsAnunesS/agent-workbench/commit/7f77ad3708ce73cfeacd2d1b5a7dd86c0d3d534b))
+* **branding:** restore original favicon configuration ([e532bba](https://github.com/ItsAnunesS/agent-workbench/commit/e532bba877c5af204345e4b51074b32d01da3017))
+* **release:** forward GitHub Actions token context to Docker ([36ece18](https://github.com/ItsAnunesS/agent-workbench/commit/36ece184c6865ba761479fe4b3a41f8c3a596df4))
+* **settings:** separate global and workspace preferences ([e871934](https://github.com/ItsAnunesS/agent-workbench/commit/e871934444cf610fe516668e44766dafb9a53be7))
+
+### Documentation
+
+* add project guides and reserved brand licensing ([1549cd4](https://github.com/ItsAnunesS/agent-workbench/commit/1549cd4756efa0a58770b3d949aa533c1ec3d04b))
+* **branding:** add English kit and localized downloads ([ca9ec2e](https://github.com/ItsAnunesS/agent-workbench/commit/ca9ec2e8749f075c3e92c3514aa3e19fe48b8fca))
+* **contributing:** require documentation updates before delivery ([9d0ad7a](https://github.com/ItsAnunesS/agent-workbench/commit/9d0ad7ac9e68ba44b30d3e6942ede4b37d520ae6))
+* **license:** adopt MIT for source code ([829daee](https://github.com/ItsAnunesS/agent-workbench/commit/829daee59ddb2f32763626266a4750941185e401))
+* **license:** move brand terms to repository root ([2d2a219](https://github.com/ItsAnunesS/agent-workbench/commit/2d2a219056b587a0bc8ad41e88e87c0ea9b00ee6))
+* **license:** prohibit republication of original brand assets ([ec277eb](https://github.com/ItsAnunesS/agent-workbench/commit/ec277ebf7c91743c039567d7b1a58658e0e494f4))
+* **readme:** add status badges and flag language buttons ([e11d329](https://github.com/ItsAnunesS/agent-workbench/commit/e11d329fc9a7b6fadb36763940b129e1eb2bd045))
+
+### Continuous Integration
+
+* add Docker builds and versioned release workflows ([e4616b5](https://github.com/ItsAnunesS/agent-workbench/commit/e4616b5c470ddfbab0119f3d33af0f92ef2b9917))
+* **release:** publish versioned builds automatically ([bfad457](https://github.com/ItsAnunesS/agent-workbench/commit/bfad45756f352aa4dd2d8baa7357bff964dddff4))
+
+### Maintenance
+
+* remove Dependabot configuration ([049f32b](https://github.com/ItsAnunesS/agent-workbench/commit/049f32b4fb1ae1ef2a83e7297efede918fe3907c))
 
 ## [0.7.0] - 2026-11-18
 
