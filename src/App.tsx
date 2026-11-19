@@ -1,4 +1,5 @@
 import { GlobalInstructionsSettings } from "./components/GlobalInstructionsSettings";
+import { InteractiveBrandMark } from "./components/InteractiveBrandMark";
 import { Fragment } from "react";
 import {
   WorkspaceSidebar,
@@ -773,7 +774,7 @@ export default function App() {
           aria-label={t("About Agent Workbench")}
           onClick={() => openDialog("globalSettings")}
         >
-          <BrandMark />
+          <InteractiveBrandMark />
         </button>
         <div className="rail-divider" />
         <div className="environment-list">

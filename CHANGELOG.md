@@ -6,6 +6,7 @@ Notable changes are recorded here. Versions use Semantic Versioning. Entries bef
 
 ### Added
 
+- Three.js 3D rail logo using the original artwork, with pointer-following eyes, subtle tilt, on-demand rendering, reduced-motion support and SVG fallback when WebGL is unavailable or lost.
 - Persistent global AGENTS.md instructions and editable commit, pull request and branch naming conventions, applied to Chat and Worker across workspaces. Workspace settings now expose the selected project's folder and memory alongside its environment account and instructions.
 - Separate global and workspace settings: application preferences and shared runtime in the rail settings button, with account and environment instructions in the OpenAI workspace card.
 - Contribution guidance requiring documentation and changelog updates before committing or pushing changes.

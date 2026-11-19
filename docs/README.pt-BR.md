@@ -73,6 +73,8 @@ O ícone inferior da barra de ambientes abre as **definições globais**, com id
 
 O cartão OpenAI abre as **definições do workspace**, com a conta e as instruções do ambiente selecionado. Com um projeto selecionado, esse painel também mostra sua pasta e memória, com ações para editá-las. As instruções do workspace e a memória do projeto continuam específicas de cada ambiente e projeto, combinadas com as instruções globais.
 
+O logo no topo da barra de ambientes é renderizado em 3D com Three.js. Passe o mouse sobre ele para inclinar o logo e mover os olhos com o ponteiro. Ele fica parado quando o ponteiro sai, respeita a preferência do sistema por movimento reduzido e usa o SVG original quando o WebGL não está disponível. Clicar nele continua abrindo as configurações globais.
+
 Use **Global settings > Language** para mudar o idioma. Os nomes dos ambientes existentes, conversas, memória dos projetos, respostas dos modelos, código e saída dos comandos são preservados como foram escritos. Novas instalações criam os ambientes padrão como **Personal** e **Work**.
 
 Os novos AppImages incluem a fonte padrão de atualização para a versão estável mais recente no GitHub Releases. Importe o AppImage no Gear Lever ou em outro gerenciador compatível para detectar e instalar atualizações sem configurar a URL do repositório. A verificação e a instalação automática dependem das configurações do gerenciador. AppImages antigos sem esses metadados precisam ser substituídos manualmente uma vez. O AppImageUpdate também pode usar o arquivo `.zsync` publicado junto de cada versão; para executar o app, baixe o `.AppImage`.
